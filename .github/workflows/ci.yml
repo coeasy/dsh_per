@@ -1,10 +1,5 @@
 name: ci
 
-# dsh-per CI gate. v3 added this: the repo previously had no CI at all, which is
-# how two red tests in test/refactor-v2.test.ts went unnoticed and how
-# scripts/ci-checks.mjs kept validating a 399s-stale lib/ copy of the
-# transition table. Every step here is a hard gate — a red step blocks merge.
-
 on:
   push:
     branches: [main, master]
@@ -31,39 +26,39 @@ jobs:
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
         with:
-          version: 9
           run_install: false
 
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node }}
-          cache: pnpm
+
+      - name: Version contract
+        run: pnpm run version:check
 
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+        run: pnpm install --no-frozen-lockfile
 
-      # 1) types must be clean before anything else runs
       - name: Type-check
         run: pnpm exec tsc --noEmit -p tsconfig.json
 
-      # 2) the whole test suite — including the engine harness tests
       - name: Test suite
         run: pnpm exec vitest run --reporter=default
 
-      # 3) build, so the structural gate validates the table that ships
       - name: Build
         run: pnpm run build
 
-      # 4) transition-table invariants + build-freshness gate. This step fails
-      #    if any src/ file is newer than its lib/ counterpart, which is what
-      #    made the v2 gate a no-op on an unbuilt tree.
       - name: Transition-table invariants
         run: pnpm run ci:checks
 
       - name: Report summary
         if: always()
+        shell: bash
         run: |
-          echo "### dsh-per CI" >> "$GITHUB_STEP_SUMMARY"
-          echo "- package version: $(node -p \"require('./package.json').version\")" >> "$GITHUB_STEP_SUMMARY"
-          echo "- src files: $(find src -name '*.ts' | wc -l)" >> "$GITHUB_STEP_SUMMARY"
+          PACKAGE_VERSION="$(node -p "require('./package.json').version")"
+          SRC_FILES="$(find src -name '*.ts' | wc -l | tr -d ' ')"
+          {
+            echo "### dsh-per CI"
+            echo "- package version: ${PACKAGE_VERSION}"
+            echo "- src files: ${SRC_FILES}"
+          } >> "$GITHUB_STEP_SUMMARY"
