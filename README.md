@@ -1,11 +1,23 @@
 # dsh-per
 
 > 当前正式版本：**v0.1.0**  
+> npm：`dsh-per@0.1.0`  
+> GitHub Release：`v0.1.0`  
 > 仓库：`coeasy/dsh_per`
 
 DSH 多模型编排插件。把复杂任务组织成“**规划 → 执行 → 复核**”流水线，并在外围提供计划审计、自动修复、机械验证、预算护栏、模型健康/降级、持久化恢复、会话命令与 Settings 配置。
 
 仓库中的 `v1/v2/v3/v4/v5` 等字样只表示设计文档或内部重构轮次，**不是插件发布版本**。插件对外版本统一由根目录 `VERSION` 与 `package.json` 管理，当前固定为 `v0.1.0`。
+
+## 当前发布状态
+
+`v0.1.0` 已完成正式发布：
+
+- npm：`dsh-per@0.1.0`；
+- GitHub Release：`v0.1.0`；
+- GitHub Release 附件：`dsh-per-0.1.0.tgz`；
+- 发布前 TypeScript、build、`ci:checks` 和 151 个测试均通过；
+- 后续重构、CI、文档和质量改进默认继续归档在 `v0.1.0`，不会自行升级版本。
 
 ## 主要功能
 
@@ -99,9 +111,15 @@ DSH 多模型编排插件。把复杂任务组织成“**规划 → 执行 → �
 
 ## 安装
 
-### npm
+### npm（推荐）
 
-发布到 npm 后：
+安装当前正式版本：
+
+```powershell
+dsh plugin --profile <name> add dsh-per@0.1.0
+```
+
+也可以使用 npm 的当前 latest：
 
 ```powershell
 dsh plugin --profile <name> add dsh-per
@@ -205,6 +223,14 @@ pnpm run ci:checks
 
 `version:check` 会阻止公共发布面再次出现未经批准的版本漂移。
 
+## 分支策略
+
+- `main` 是唯一长期维护和正式发布分支。
+- fix / refactor / docs / release 分支均为短期分支。
+- 短期分支完成 PR 合并后应删除或重新对齐到最新 `main`，不能继续演变为第二条长期版本线。
+- 不使用 `release/v0.2.0`、`refactor/v1.0.0` 等名称表达未经批准的版本升级。
+- 详细规则见 `docs/BRANCHING_AND_RELEASE.md`。
+
 ## 已知限制
 
 - 当前 scheduler 仍是单宿主严格串行，同一时间只运行一个编排任务。
@@ -212,12 +238,15 @@ pnpm run ci:checks
 - 非终态任务在宿主重启后采用安全放弃策略，不做 checkpoint resume。
 - 部分里程碑、提示与审计文案仍为中文硬编码。
 - Settings UI 只覆盖常用配置，高级策略继续使用 patch。
+- 测试环境重复创建 engine 时仍可能触发 `MaxListenersExceededWarning`，需要继续收敛退出监听器生命周期。
 
 ## 当前重构计划
 
 项目功能与后续重构计划见：`docs/PROJECT_OVERVIEW_AND_REFACTOR_PLAN.md`。
 
 版本策略见：`docs/VERSIONING.md`。
+
+分支与发布维护规范见：`docs/BRANCHING_AND_RELEASE.md`。
 
 E2E 基线见：`docs/E2E测试报告-v0.1.0.md`。
 
