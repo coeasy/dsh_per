@@ -1,6 +1,6 @@
 {
   "name": "dsh-per",
-  "version": "0.4.0",
+  "version": "0.1.0",
   "description": "DSH multi-model orchestration plugin: plan / execute / review pipeline with auto fix-loop, budget and degradation",
   "type": "module",
   "main": "lib/index.js",
@@ -22,7 +22,8 @@
     "build": "tsc -p tsconfig.json && node scripts/build-web.mjs",
     "pretest": "node scripts/build-web.mjs",
     "test": "vitest run",
-    "prepublishOnly": "pnpm run build && pnpm run test && pnpm run ci:checks",
+    "version:check": "node scripts/check-version.mjs",
+    "prepublishOnly": "pnpm run version:check && pnpm run build && pnpm run test && pnpm run ci:checks",
     "ci:checks": "node scripts/ci-checks.mjs"
   },
   "dependencies": {
@@ -35,6 +36,28 @@
     "@types/node": "^22.0.0",
     "typescript": "^5.6.0",
     "vitest": "^3.0.0"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "packageManager": "pnpm@9.15.9",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/coeasy/dsh_per.git"
+  },
+  "homepage": "https://github.com/coeasy/dsh_per#readme",
+  "bugs": {
+    "url": "https://github.com/coeasy/dsh_per/issues"
+  },
+  "keywords": [
+    "dsh",
+    "deepseek-harness",
+    "orchestrator",
+    "multi-model",
+    "agent"
+  ],
+  "publishConfig": {
+    "access": "public"
   },
   "dsh": {
     "bundle": {
