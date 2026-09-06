@@ -35,22 +35,64 @@
 
 ## 30 秒安装
 
-生产环境推荐固定正式版本：
+### 如果你使用 DSH Web（推荐示例）
 
-```bash
-dsh plugin --profile <profile> add dsh-per@0.1.0
-```
-
-例如：
+直接复制下面这条命令：
 
 ```bash
 dsh plugin --profile web add dsh-per@0.1.0
 ```
 
+这条命令的含义：
+
+```text
+dsh                 使用 DSH CLI
+plugin              进入插件管理
+--profile web        把插件安装到名为 web 的 DSH profile
+add                  执行安装
+ dsh-per@0.1.0       安装 npm 包 dsh-per，并固定版本为 0.1.0
+```
+
+安装完成后，仍然使用同一个 profile 启动 DSH Web：
+
+```bash
+dsh --profile web
+```
+
+验证插件是否已经装进 `web` profile：
+
+```bash
+dsh plugin --profile web list --depth 0
+```
+
+### `<profile>` 到底是什么？
+
+文档中的 `<profile>` 只是**占位符**，不要把尖括号原样输入。
+
+如果你使用官方常见的 Web profile，就把 `<profile>` 替换成 `web`：
+
+```bash
+dsh plugin --profile web add dsh-per@0.1.0
+```
+
+如果你自己创建了一个名为 `my-team` 的 profile，则写成：
+
+```bash
+dsh plugin --profile my-team add dsh-per@0.1.0
+```
+
+关键原则是：**插件安装到哪个 profile，运行时也要使用同一个 profile。**
+
+通用命令格式仅用于说明语法：
+
+```bash
+dsh plugin --profile <你的-profile-名称> add dsh-per@0.1.0
+```
+
 也可以安装 npm 当前 latest：
 
 ```bash
-dsh plugin --profile <profile> add dsh-per
+dsh plugin --profile web add dsh-per
 ```
 
 更多方式：GitHub tag、本地源码、Release tarball、升级、卸载、验证，请看 **[完整安装指南](docs/INSTALLATION.md)**。
