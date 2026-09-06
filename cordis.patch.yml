@@ -1,0 +1,8 @@
+# The dsh-per bundle patch: multi-model orchestration over dsh-base.
+# Default config is inert (mode auto + no stages => passthrough, ADR #13);
+# a profile patch layer overrides the `per` row with stage models
+# to enable the pipeline. One plugin, many bundles-friendly (ADR #24).
+- insert:
+    - id: per
+      name: dsh-per
+      config: {}

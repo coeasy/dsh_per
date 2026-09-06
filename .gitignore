@@ -1,0 +1,19 @@
+# dependencies / build cache
+node_modules/
+
+# packed artifacts (release via npm pack / GitHub releases)
+*.tgz
+
+# local logs
+*.log
+
+# lockfile: library package — keep dependency ranges open
+pnpm-lock.yaml
+
+# NOTE: lib/ and web/dist/ ARE committed on purpose — the plugin ships
+# prebuilt (community convention, cf. dsh-at-file): a git install must run
+# without a local build step. Rebuild with `pnpm run build` after src changes.
+
+# local agent memory / scratch
+.workbuddy/
+_*.txt
