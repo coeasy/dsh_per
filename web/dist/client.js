@@ -82,6 +82,12 @@ function makeDraft(value) {
     budget: {
       daily_limit_cny: v.budget?.daily_limit_cny ?? '',
       task_limit_cny: v.budget?.task_limit_cny ?? '',
+      // v4: per-model rate table, edited as rows and saved back as a record
+      pricingRows: Object.entries(v.budget?.pricing ?? {}).map(([model, r]) => ({
+        model,
+        input: r && r.input !== undefined ? String(r.input) : '',
+        output: r && r.output !== undefined ? String(r.output) : '',
+      })),
     },
     mechanical_verification: { enabled: v.mechanical_verification?.enabled !== false },
   };
@@ -208,6 +214,18 @@ function buildSaveOps(draft, snap) {
     if (dv !== bv) ops.push({ op: 'set', path: ['budget', k], value: dv });
     else if (ub[k] !== undefined) ops.push({ op: 'unset', path: ['budget', k] });
   }
+  // v4: pricing record — rows without a model are dropped; the whole record
+  // replaces wholesale at the seam (a record has no partial-leaf semantics)
+  const pricingFromDraft = {};
+  for (const row of draft.budget.pricingRows ?? []) {
+    const model = String(row.model ?? '').trim();
+    if (!model) continue;
+    pricingFromDraft[model] = { input: Number(row.input), output: Number(row.output) };
+  }
+  const bPricing = budget.pricing ?? {};
+  const pricingSame = JSON.stringify(pricingFromDraft) === JSON.stringify(bPricing);
+  if (!pricingSame) ops.push({ op: 'set', path: ['budget', 'pricing'], value: pricingFromDraft });
+  else if (ub.pricing !== undefined) ops.push({ op: 'unset', path: ['budget', 'pricing'] });
   const mech = base.mechanical_verification ?? {};
   const dv = draft.mechanical_verification.enabled;
   const bv = mech.enabled !== false;
@@ -275,6 +293,17 @@ function AuditRow(props) {
   );
 }
 
+function PricingRow(props) {
+  const { row, index, disabled, onChange, onRemove } = props;
+  const set = (f) => (v) => onChange(index, { ...row, [f]: v });
+  return h('div', { className: 'dsh-orch-row' },
+    h(Field, { label: '模型', value: row.model, onChange: set('model'), disabled, placeholder: 'model id' }),
+    h(Field, { label: '输入价（元/百万 token）', value: row.input, onChange: set('input'), disabled, type: 'number' }),
+    h(Field, { label: '输出价（元/百万 token）', value: row.output, onChange: set('output'), disabled, type: 'number' }),
+    h('button', { className: 'dsh-orch-link', disabled, onClick: onRemove, type: 'button' }, '删除'),
+  );
+}
+
 // ── card component ──────────────────────────────────────────────────────────
 
 function OrchestratorCard(props) {
@@ -313,7 +342,16 @@ function OrchestratorCard(props) {
   const invalid = STAGE_KEYS.some((k) => d.stages[k] && rowInvalid(d.stages[k]))
     || d.stages.plan_audit.some((r) => rowInvalid(r))
     || (d.budget.daily_limit_cny !== '' && (!Number.isInteger(Number(d.budget.daily_limit_cny)) || Number(d.budget.daily_limit_cny) <= 0))
-    || (d.budget.task_limit_cny !== '' && (!Number.isInteger(Number(d.budget.task_limit_cny)) || Number(d.budget.task_limit_cny) <= 0));
+    || (d.budget.task_limit_cny !== '' && (!Number.isInteger(Number(d.budget.task_limit_cny)) || Number(d.budget.task_limit_cny) <= 0))
+    // v4: a kept pricing row needs a model and both non-negative rates
+    || (d.budget.pricingRows ?? []).some((r) => {
+      const kept = String(r.model ?? '').trim() !== '' || String(r.input ?? '').trim() !== '' || String(r.output ?? '').trim() !== '';
+      if (!kept) return false;
+      if (String(r.model ?? '').trim() === '') return true;
+      const inN = Number(r.input);
+      const outN = Number(r.output);
+      return !Number.isFinite(inN) || !Number.isFinite(outN) || inN < 0 || outN < 0;
+    });
 
   const save = async () => {
     if (invalid || disabled) return;
@@ -406,6 +444,12 @@ function OrchestratorCard(props) {
     if (cur.stages.plan_audit.length < 2) cur.stages.plan_audit.push(stageToDraft(null));
     return cur;
   });
+  const setPricing = (i, row) => edit((cur) => { cur.budget.pricingRows[i] = row; return cur; });
+  const removePricing = (i) => edit((cur) => { cur.budget.pricingRows.splice(i, 1); return cur; });
+  const addPricing = () => edit((cur) => {
+    cur.budget.pricingRows.push({ model: '', input: '', output: '' });
+    return cur;
+  });
 
   return h('div', { className: 'dsh-orch-card' },
     h('div', { className: 'dsh-orch-head' },
@@ -453,6 +497,14 @@ function OrchestratorCard(props) {
           onChange: (v) => edit((cur) => { cur.budget.daily_limit_cny = v; return cur; }),
         }),
       ),
+      h('div', { className: 'dsh-orch-row' },
+        h('span', { className: 'dsh-orch-section-title' }, '模型单价表（元/百万 token）'),
+        h('button', { className: 'dsh-orch-link', disabled, onClick: addPricing, type: 'button' }, '+ 添加模型'),
+      ),
+      h('p', { className: 'dsh-orch-note' }, '未在此表且非内置价表的模型按 ¥0 记账（日/任务限额不生效）；budget.count_passthrough=true 时透传消耗也计入每日上限。'),
+      ...d.budget.pricingRows.map((row, i) => h(PricingRow, {
+        key: i, index: i, row, disabled, onChange: setPricing, onRemove: () => removePricing(i),
+      })),
     ),
     h('div', { className: 'dsh-orch-section' },
       h('span', { className: 'dsh-orch-section-title' }, '机械校验'),

@@ -89,12 +89,20 @@ export function createEngine(ctx: HostContract, rawConfig: unknown, deps?: Parti
   const gate = new Gate(cfg.gate, (message) => ctx.logger.warn(message));
   // resolves on each debit so settings/session overrides take effect without a
   // restart (same pattern as the limits getter below)
+  /** Wall clock — swap to drive the wall-clock breaker and retention windows. */
+  const clock: () => number = deps?.clock ?? (() => Date.now());
+
   const pricing: Pricing = { rate: (_provider, model) => resolvePricingRate(effectiveConfig.budget, model) };
-  const ledger = new BudgetLedger(join(dataDir, 'budget'), pricing, () => ({
-    dailyLimitCny: effectiveConfig.budget.daily_limit_cny,
-    taskLimitCny: effectiveConfig.budget.task_limit_cny,
-    countPassthrough: effectiveConfig.budget.count_passthrough,
-  }));
+  const ledger = new BudgetLedger(
+    join(dataDir, 'budget'),
+    pricing,
+    () => ({
+      dailyLimitCny: effectiveConfig.budget.daily_limit_cny,
+      taskLimitCny: effectiveConfig.budget.task_limit_cny,
+      countPassthrough: effectiveConfig.budget.count_passthrough,
+    }),
+    clock,
+  );
   const verifier = new MechanicalVerifier(
     {
       enabled: cfg.mechanical_verification.enabled,
@@ -131,9 +139,6 @@ export function createEngine(ctx: HostContract, rawConfig: unknown, deps?: Parti
     readTextIfExists: readIfExists,
     writeText: (f, t) => writeFileSync(f, t, 'utf8'),
   };
-
-  /** Wall clock — swap to drive the wall-clock breaker and retention windows. */
-  const clock: () => number = deps?.clock ?? (() => Date.now());
 
   /**
    * Subagent dispatch. `undefined` means "resolve from the host per call",
@@ -471,6 +476,7 @@ export function createEngine(ctx: HostContract, rawConfig: unknown, deps?: Parti
     }
 
     const task = new OrchestratorTask({
+      now: clock,
       id: `task-${clock().toString(36)}-${Math.random().toString(16).slice(2, 6)}`,
       sessionId,
       goal: text,

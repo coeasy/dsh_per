@@ -1,5 +1,29 @@
 # Changelog
 
+## 0.4.0（2026-09-06）
+
+v4 收尾打磨批（依据 `docs/重构方案-v4.md`，用户决策：实装 count_passthrough / 本批加定价 UI / F2-F9 全做）：
+
+### 正确性 / 语义
+- **`budget.count_passthrough` 实装**（v4 F1）：`true` 时透传消耗计入每日硬限额（经同一 `debit`），触顶后新编排任务被启动预检拒绝；默认 `false` 维持「仅观测」（ADR #27）。
+- 机械验证摘要补全 lint（F2）：`mechSummary` 分段改为 `compile:… / lint:… / tests:…`，`review/pass:MISS` 修复指令携带 lint 失败 tail。
+- 时钟贯通（F3）：`OrchestratorTask`（startedAt/updatedAt）与 `BudgetLedger`（dayKey/entry）接受注入时钟，`Date.now` 从 task/budget 层移除。
+- `routeVerdict` 签名简化（F7）：移除无消费者的 mechanicalPass 参数与 note。
+- `/orch set` 移除冗余的全局 `applyOverrides()`（F8）。
+
+### 资源
+- `budget.json` daily 记录 30 天保留窗（F4）。
+
+### 工程化
+- **ci-checks 第 7 项不变量**（F9）：schema 声明的每个配置键必须在 src/ 中被消费（设置 plumbing 除外）——本类「声明 ≠ 实现」问题从此被门禁自动捕获。
+- health 半开探测语义在注释/README 明示（F8 注）；README 已知限制补 fallback_chain 同族说明（F9 注）。
+
+### 设置界面
+- **模型单价表编辑器**（F10）：`budget.pricing` 打通 settings seam（schemastery + overlay 整体替换语义 + base 透传），设置卡片可增删改每模型输入/输出单价，闭环未计价模型告警的处置路径。
+
+测试 142 → **151** 用例。
+
+
 ## 0.3.0（2026-09-06）
 
 重构批（依据 `docs/重构方案-v2.md` / `docs/重构方案-v3.md`）：

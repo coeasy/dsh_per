@@ -79,7 +79,9 @@ export function registerCommands(ctx: EngineCtx): void {
         if (!Object.keys(patch).length) return { kind: 'error', text: '用法: /orch set plan=<model> execute=<model> review=<model>' };
         if (ctx.sessionOverrides.size > 5000) ctx.sessionOverrides.clear(); // bounded memory
         ctx.sessionOverrides.set(sessionId, { ...(ctx.sessionOverrides.get(sessionId) ?? {}), ...patch });
-        ctx.applyOverrides();
+        // NOTE: no global applyOverrides() here (v4) — session overrides are
+        // applied per-session at `sessionEffective()` / routing time; merging
+        // them into the global effectiveConfig would violate the layering rule
         return { kind: 'success', text: '会话级覆盖已生效（/orch reset 回落，/orch save 持久化）' };
       }
       case 'reset':

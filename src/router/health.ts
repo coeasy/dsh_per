@@ -51,7 +51,10 @@ export class ModelHealthService {
     s.halfOpenAt = null;
   }
 
-  /** Whether a model is considered failed; half-open allows one probe attempt. */
+  /** Whether a model is considered failed; half-open allows probe attempts.
+   *  Semantics note (v4): EVERY request after `halfOpenAt` is a probe — the
+   *  window is not limited to a single in-flight attempt (success clears the
+   *  state, failure re-arms the cool-down). */
   isFailed(provider: string | undefined, model: string, at = Date.now()): boolean {
     const s = this.states.get(this.key(provider, model));
     if (!s || s.markedFailedAt === null) return false;

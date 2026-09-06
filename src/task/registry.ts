@@ -51,10 +51,10 @@ export class TaskRegistry {
   }
 
   /** Prune terminal tasks retained past the retention window; files stay on disk. */
-  prune(retentionMs = 24 * 3600_000): void {
-    const now = Date.now();
+  prune(retentionMs = 24 * 3600_000, now: () => number = Date.now): void {
+    const t0 = now();
     for (const [id, t] of this.byId) {
-      if (isTerminal(t.state) && now - t.snapshot.updatedAt > retentionMs) this.byId.delete(id);
+      if (isTerminal(t.state) && t0 - t.snapshot.updatedAt > retentionMs) this.byId.delete(id);
     }
   }
 

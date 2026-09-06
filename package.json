@@ -1,6 +1,6 @@
 {
   "name": "dsh-per",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "DSH multi-model orchestration plugin: plan / execute / review pipeline with auto fix-loop, budget and degradation",
   "type": "module",
   "main": "lib/index.js",

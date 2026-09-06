@@ -9,6 +9,10 @@
 //    first), unless the engine emits the composite event name explicitly
 // 6) build freshness — no src/ file may be newer than its lib/ counterpart,
 //    otherwise this gate would be validating stale output
+// 7) config-key consumption — every leaf key declared in config/schema.ts must
+//    be consumed somewhere in src/ outside the schema/settings plumbing
+//    (this is the invariant that would have caught `plan_protocol` in v1 and
+//    `budget.count_passthrough` in v3)
 import { readFileSync, existsSync, statSync, readdirSync } from 'node:fs';
 import { dirname, relative, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -182,6 +186,13 @@ const srcFiles = (() => {
   return out;
 })();
 const srcSources = srcFiles.map((f) => readFileSync(f, 'utf8')).join('\n');
+// files whose whole purpose is config DECLARATION — keys referenced only there
+// are not consumed
+const CONSUMPTION_EXCLUDED = /src[\\/]config[\\/]schema\.ts$|src[\\/]settings[\\/]namespace\.ts$/;
+const consumptionSources = srcFiles
+  .filter((f) => !CONSUMPTION_EXCLUDED.test(f))
+  .map((f) => readFileSync(f, 'utf8'))
+  .join('\n');
 for (const [state, rules] of Object.entries(TRANSITION_TABLE)) {
   for (const [key, rule] of Object.entries(rules)) {
     if (!key.includes(':')) continue;
@@ -216,10 +227,30 @@ if (!existsSync(libDir)) {
   }
 }
 
+// ── 7) config keys must be consumed (v4) ──
+// Leaf keys are the snake_case identifiers declared in config/schema.ts.
+// A key that appears nowhere outside the schema/settings files is dead config:
+// declared, parseable, storable — and silently without effect.
+const schemaText = readFileSync(join(ROOT, 'src/config/schema.ts'), 'utf8');
+const keyRe = /^\s+([a-z][a-z0-9_]{2,}):/gm;
+const declared = new Set();
+for (const m of schemaText.matchAll(keyRe)) declared.add(m[1]);
+// generic identifiers that legitimately collide with language/library usage
+// or are structural (zod plumbing), not user-facing config
+const CONSUMPTION_WHITELIST = new Set(['default', 'input', 'output', 'invalid', 'required', 'message', 'base', 'watch']);
+let deadKeys = 0;
+for (const key of [...declared].sort()) {
+  if (CONSUMPTION_WHITELIST.has(key)) continue;
+  if (!new RegExp('\\b' + key + '\\b').test(consumptionSources)) {
+    fail(`dead config key "${key}" — declared in schema.ts but never consumed in src/ (V4-7)`);
+    deadKeys++;
+  }
+}
+
 // summary
 const version = pkg.version;
 if (failures === 0) {
-  console.log(`ci-checks: OK (v${version}) — ${Object.keys(TRANSITION_TABLE).length} states with rows, ${cycles.length} cycles all costed, fallbacks acyclic, variant rows reachable, build ${freshnessNote} (src)`);
+  console.log(`ci-checks: OK (v${version}) — ${Object.keys(TRANSITION_TABLE).length} states with rows, ${cycles.length} cycles all costed, fallbacks acyclic, variant rows reachable, build ${freshnessNote} (src), config keys consumed`);
 } else {
   console.error(`ci-checks: ${failures} failure(s)`);
   process.exit(1);

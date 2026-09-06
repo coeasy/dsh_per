@@ -14,7 +14,10 @@ export declare class ModelHealthService {
     private stateOf;
     recordFailure(provider: string | undefined, model: string, kind: string, at?: number): void;
     recordSuccess(provider: string | undefined, model: string): void;
-    /** Whether a model is considered failed; half-open allows one probe attempt. */
+    /** Whether a model is considered failed; half-open allows probe attempts.
+     *  Semantics note (v4): EVERY request after `halfOpenAt` is a probe — the
+     *  window is not limited to a single in-flight attempt (success clears the
+     *  state, failure re-arms the cool-down). */
     isFailed(provider: string | undefined, model: string, at?: number): boolean;
     reset(): void;
 }

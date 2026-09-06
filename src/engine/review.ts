@@ -240,7 +240,7 @@ export async function runReview(
     await fire(task, 'review/fail-exec'); // conservative default (§4.3)
     return 'steered';
   }
-  const route = routeVerdict(verdict, mechanicalPass).route;
+  const route = routeVerdict(verdict).route;
   notice(
     task.snapshot.sessionId,
     MILESTONES.reviewResult(

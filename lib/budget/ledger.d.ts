@@ -37,13 +37,17 @@ export declare class BudgetLedger {
     private dataDir;
     private pricing;
     private limits;
+    /** wall clock seam (v4): injectable so ledger day-rollover is testable */
+    private now;
     private state;
     private dirty;
     constructor(dataDir: string, pricing: Pricing, limits: () => {
         dailyLimitCny: number;
         taskLimitCny: number;
         countPassthrough: boolean;
-    });
+    }, 
+    /** wall clock seam (v4): injectable so ledger day-rollover is testable */
+    now?: () => number);
     private get file();
     private load;
     private flush;
@@ -53,7 +57,9 @@ export declare class BudgetLedger {
     /**
      * Drop per-task spend entries no longer tracked in memory (bounded budget
      * file growth on long-lived hosts). Daily totals are the authoritative
-     * limit; per-task records are diagnostic.
+     * limit; per-task records are diagnostic. Daily day-keys older than the
+     * 30-day retention window are dropped with them (v4: the daily map used to
+     * grow one key per day forever).
      */
     pruneTasks(keep: ReadonlySet<string>): void;
     passthroughToday(at?: number): number;

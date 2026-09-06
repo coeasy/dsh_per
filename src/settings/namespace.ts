@@ -33,7 +33,7 @@ export interface OrchestratorSettingsSection {
     review?: Partial<StageConfig>;
     plan_audit?: StageConfig[];
   };
-  budget?: { daily_limit_cny?: number; task_limit_cny?: number };
+  budget?: { daily_limit_cny?: number; task_limit_cny?: number; pricing?: Record<string, { input: number; output: number }> };
   mechanical_verification?: { enabled?: boolean };
 }
 
@@ -51,6 +51,9 @@ export const orchestratorSettingsSchema: any = Schema.object({
   budget: Schema.object({
     daily_limit_cny: Schema.natural().default(50),
     task_limit_cny: Schema.natural().default(5),
+    // v4: per-model CNY/million-token rates (P0-03 closure — the unpriced-model
+    // warning tells users to set these; now editable in the card)
+    pricing: Schema.dict(Schema.object({ input: Schema.number().required(), output: Schema.number().required() })).default({}),
   }),
   mechanical_verification: Schema.object({
     enabled: Schema.boolean().default(true),
@@ -63,8 +66,14 @@ export function buildConfigBase(cfg: OrchestratorConfig): OrchestratorSettingsSe
     s ? { model: s.model, provider: s.provider, reasoning_effort: s.reasoning_effort, on_failure: s.on_failure, fallback_chain: s.fallback_chain } : undefined;
   const base: OrchestratorSettingsSection = {
     mode: cfg.mode,
-    budget: { daily_limit_cny: cfg.budget.daily_limit_cny, task_limit_cny: cfg.budget.task_limit_cny },
-    mechanical_verification: { enabled: cfg.mechanical_verification.enabled },
+    budget: {
+      daily_limit_cny: cfg.budget.daily_limit_cny,
+      task_limit_cny: cfg.budget.task_limit_cny,
+      pricing: { ...cfg.budget.pricing },
+    },
+    // optional chaining: the function is typed for a parsed config, but tests
+    // exercise it with sparse overlays
+    mechanical_verification: { enabled: cfg.mechanical_verification?.enabled ?? true },
   };
   if (cfg.stages) {
     base.stages = {
@@ -110,6 +119,11 @@ export function applySettingsOverlay(base: OrchestratorConfig, section: Orchestr
   if (section.budget) {
     if (typeof section.budget.daily_limit_cny === 'number') next.budget.daily_limit_cny = section.budget.daily_limit_cny;
     if (typeof section.budget.task_limit_cny === 'number') next.budget.task_limit_cny = section.budget.task_limit_cny;
+    // pricing replaces wholesale (a record has no partial-leaf semantics);
+    // L10 copy — the section may be a frozen host value
+    if (section.budget.pricing && typeof section.budget.pricing === 'object') {
+      next.budget.pricing = { ...section.budget.pricing };
+    }
   }
   if (section.mechanical_verification && typeof section.mechanical_verification.enabled === 'boolean') {
     next.mechanical_verification.enabled = section.mechanical_verification.enabled;

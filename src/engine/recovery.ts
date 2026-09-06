@@ -15,6 +15,7 @@ export async function recover(engine: EngineCtx, hooks: TaskHooks): Promise<void
   const pending: Promise<void>[] = [];
   for (const snap of snapshots.recoverable()) {
     const task = new OrchestratorTask({
+      now: engine.clock,
       id: snap.id,
       sessionId: snap.sessionId,
       goal: snap.goal,

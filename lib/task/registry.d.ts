@@ -22,7 +22,7 @@ export declare class TaskRegistry {
     /** Drop child bookkeeping once its parent task settles (bounded memory). */
     untrackChild(sessionId: string): void;
     /** Prune terminal tasks retained past the retention window; files stay on disk. */
-    prune(retentionMs?: number): void;
+    prune(retentionMs?: number, now?: () => number): void;
     all(): OrchestratorTask[];
 }
 /** Serial scheduler (ADR #19): one running task, the rest queued in order. */

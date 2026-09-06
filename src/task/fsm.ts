@@ -40,6 +40,8 @@ export class OrchestratorTask {
   pendingPlanAudit?: { response: { adopted: string[]; rebutted: Array<{ id: string; justification: string }> } | null } | undefined;
   /** serialized hook execution to keep transitions ordered per task */
   private queue: Promise<unknown> = Promise.resolve();
+  /** wall clock seam (v4): injectable so transition timestamps are testable */
+  private readonly now: () => number;
 
   constructor(init: {
     id: string;
@@ -50,8 +52,11 @@ export class OrchestratorTask {
     limits: TaskLimits;
     flags?: Partial<EngineFlags>;
     gateDecision?: TaskSnapshot['gateDecision'];
+    /** defaults to Date.now; the engine injects its clock seam */
+    now?: () => number;
   }) {
-    const now = Date.now();
+    const now = init.now ?? Date.now;
+    this.now = now;
     this.snapshot = {
       id: init.id,
       sessionId: init.sessionId,
@@ -83,8 +88,8 @@ export class OrchestratorTask {
       llmCalls: 0,
       planAudit: [],
       auditSkipped: 0,
-      startedAt: now,
-      updatedAt: now,
+      startedAt: this.now(),
+      updatedAt: this.now(),
     };
     this.hooks = init.hooks;
     this.limits = init.limits;
@@ -184,7 +189,7 @@ export class OrchestratorTask {
 
     this.snapshot.state = chosen.to;
     this.applyAction(chosen);
-    this.snapshot.updatedAt = Date.now();
+    this.snapshot.updatedAt = this.now();
     const hook = chosen.action?.hook;
     // same queue slot: no re-`enqueue()` here, see `transitionCore`
     if (hook && this.hooks[hook]) await this.hooks[hook]!(this);
@@ -199,7 +204,7 @@ export class OrchestratorTask {
   private async forceAbortCore(reason: AbortReason): Promise<boolean> {
     if (isTerminal(this.state)) return false;
     this.snapshot.state = 'ABORTED';
-    this.snapshot.updatedAt = Date.now();
+    this.snapshot.updatedAt = this.now();
     // Only guard/internal reasons reach here. Exhaustion and interrupt outcomes
     // (`budget/exhausted`, `model/hard-fail`, `circuit/broken`, `user/cancel`,
     // `replan/fail:EXHAUSTED`) are delivered by the transition table's own

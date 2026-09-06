@@ -100,16 +100,16 @@ describe('review routing (v5.0 §4.3 mechanical rules)', () => {
     planVersion: 1, pass: false, defect_type: 'execution', confidence: 0.9, issues: [], ...over,
   });
   it('confident execution → fail-exec', () => {
-    expect(routeVerdict(v({}), true).route).toBe('review/fail-exec');
+    expect(routeVerdict(v({})).route).toBe('review/fail-exec');
   });
   it('confident plan → fail-plan', () => {
-    expect(routeVerdict(v({ defect_type: 'plan' }), true).route).toBe('review/fail-plan');
+    expect(routeVerdict(v({ defect_type: 'plan' })).route).toBe('review/fail-plan');
   });
   it('low confidence → ambiguous', () => {
-    expect(routeVerdict(v({ confidence: 0.5 }), true).route).toBe('review/ambiguous');
+    expect(routeVerdict(v({ confidence: 0.5 })).route).toBe('review/ambiguous');
   });
   it('pass + mechanical fail still routes review/pass (engine flips flag)', () => {
-    expect(routeVerdict(v({ pass: true }), false).route).toBe('review/pass');
+    expect(routeVerdict(v({ pass: true })).route).toBe('review/pass');
   });
 });
 

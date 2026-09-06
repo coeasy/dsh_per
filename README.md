@@ -89,8 +89,8 @@ bundle 默认插入的 `orchestrator` 行配置为空（全部 zod 默认值）�
 - **修复回路**：fix_cycle ≤ max_cycles，耗尽后 `DONE_FLAGGED` 交付旗标报告；issue 稳定 id 跨轮追踪 + 通过即清零（M5）
 - **复核**：独立子代理（`subagents.start('spawn', …)`）+ `outputSchema` 结构化强制 + 派发超时（`circuit_breaker.review_dispatch_timeout_ms`，默认 5min，超时自动取消并转死锁）；每轮一次重派预算（成功或通过即重置），死锁重派一次后保守合成（SYN-REVIEW-DEADLOCK）；大产物分片复核（>12 文件或 >800 diff 行按文件分片并行派发，≤4 片，保守合并：最严 defect + 最低 confidence + id 去重）；复核 prompt 受 review.input_token_budget 约束，超限逐级裁剪为骨架计划/纯产物统计
 - **机械验证**：compile/lint/tests 命令（每轮重跑，结果反映当前产物；可配 parallel 并行）+ 超时按 unavailable + 任务取消即时 SIGKILL；quick channel 要求全部已配置命令通过；复核通过但机械失败走 `review/pass:MISS`（不耗修复轮次）
-- **预算**（A14/A12）：任务级快照 + 每日限额 + 任务限额 + token/调用数/墙钟熔断；passthrough 只观测不限制（ADR #27）
-- **模型健康**（A6）：5min/3fail 窗口 + 10min 半开（探测失败自动重关）；降级链 review→execute→plan 互换，fixer 角色执行者优先（ADR #28）；请求成功即恢复健康计数
+- **预算**（A14/A12）：任务级快照 + 每日限额 + 任务限额 + token/调用数/墙钟熔断；`budget.count_passthrough=true` 时透传消耗计入每日限额，默认仅观测（ADR #27）
+- **模型健康**（A6）：5min/3fail 窗口 + 10min 半开（窗口内所有请求均为探测，失败自动重关）；降级链 review→execute→plan 互换，fixer 角色执行者优先（ADR #28）；请求成功即恢复健康计数
 - **恢复**：boot 时非终态陈旧快照标记 `abandoned` 并中止落盘（不阻塞调度器、不重复回收）
 - **内存有界**：任务 settle 时统一清理 childSessions/pendingSteer/noticedOnce/lastBinding/requestRetries/agents；终态任务 24h 保留窗后离开内存（快照文件保留）；预算 tasks 记录仅保留活跃任务；透传观测上限 5000 会话
 - **命令**：`/orch status|set|reset|save|budget|task|passthrough|abort`（`save` 写全局默认，重启加载）
@@ -98,9 +98,10 @@ bundle 默认插入的 `orchestrator` 行配置为空（全部 zod 默认值）�
 ## 已知限制
 
 - **严格串行**（ADR #19）：单宿主同一时刻只运行一个编排任务，其余排队；会话级并行未实现
-- **估价模式**：内置价表仅覆盖 deepseek 家族；其他模型请配置 `budget.pricing`（按模型）或 `budget.pricing_unknown`（兜底），否则按 ¥0 记账、金额限额不生效（会推送一次性告警）
+- **估价模式**：内置价表仅覆盖 deepseek 家族；其他模型请配置 `budget.pricing`（按模型，设置界面已支持）或 `budget.pricing_unknown`（兜底），否则按 ¥0 记账、金额限额不生效（会推送一次性告警）
+- **fallback_chain 仅同族**：降级链按「部署默认 provider」解析模型，不支持跨 provider 的 `provider::model` 写法
 - **全中文文案**：里程碑/指令/审计提示为中文硬编码，暂无 i18n
-- **设置界面可配子集**：gate/limits/circuit_breaker/risk_profile/fix_loop/visibility 仍走补丁层配置
+- **设置界面可配子集**：模式、三阶段模型（含审计）、预算（含模型单价表）、机械校验开关；gate/limits/circuit_breaker/risk_profile/fix_loop/visibility 仍走补丁层配置
 - **v1 恢复策略**：宿主重启后非终态任务一律放弃（aborted 落盘），不恢复会话
 
 ## 开发

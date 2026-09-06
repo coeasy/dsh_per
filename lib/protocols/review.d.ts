@@ -88,10 +88,14 @@ export type VerdictRoute = 'review/pass' | 'review/fail-exec' | 'review/fail-pla
 /**
  * Mechanical routing rules (v5.0 §4.3) — the orchestrator makes no semantic
  * judgment; confidence thresholds route the verdict.
+ *
+ * NOTE (v4): the pass-but-mechanical-failed case is NOT routed here — the
+ * engine sets `flags.mechanicalFailedAfterPass` and the transition table's
+ * `review/pass:MISS` guard picks the variant, so this function only ever sees
+ * verdicts that need a defect route.
  */
-export declare function routeVerdict(verdict: ReviewVerdict, mechanicalPass: boolean | 'unavailable'): {
+export declare function routeVerdict(verdict: ReviewVerdict): {
     route: VerdictRoute;
-    note?: string;
 };
 /** Merge sharded verdicts conservatively (change-set M3). */
 export declare function mergeShardedVerdicts(shards: ReviewVerdict[]): ReviewVerdict;

@@ -21,7 +21,7 @@ import type { ReviewVerdict, TaskSnapshot } from '../types.js';
 export declare const REVIEW_PROMPT_MARKER = "\u4F60\u662F\u72EC\u7ACB\u7684\u590D\u6838\u5458";
 /** P2-08/P1-10: plan skeleton — ids/titles/files only, no prose fields. */
 export declare function skeletonPlan(plan: TaskSnapshot['plan']): string;
-/** Compact mechanical-verification line for the review prompt. */
+/** Compact mechanical-verification line for the review prompt (lint included, v4). */
 export declare function mechSummary(snap: TaskSnapshot): string;
 /** New-plan milestone (was the misspelled `MILESTONS_REPLAN_OK`, v3 E7). */
 export declare function replanOkMilestone(task: OrchestratorTask): string;

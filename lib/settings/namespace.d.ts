@@ -22,6 +22,10 @@ export interface OrchestratorSettingsSection {
     budget?: {
         daily_limit_cny?: number;
         task_limit_cny?: number;
+        pricing?: Record<string, {
+            input: number;
+            output: number;
+        }>;
     };
     mechanical_verification?: {
         enabled?: boolean;

@@ -44,6 +44,9 @@ export interface Pricing {
   rate(provider: string | undefined, model: string): { input: number; output: number } | null;
 }
 
+/** Daily day-keys retained in budget.json (v4: bounded growth). */
+const RETENTION_DAYS = 30;
+
 export class BudgetLedger {
   private state: PersistShape = { daily: {}, tasks: {}, ledger: [] };
   private dirty = false;
@@ -52,6 +55,8 @@ export class BudgetLedger {
     private dataDir: string,
     private pricing: Pricing,
     private limits: () => { dailyLimitCny: number; taskLimitCny: number; countPassthrough: boolean },
+    /** wall clock seam (v4): injectable so ledger day-rollover is testable */
+    private now: () => number = Date.now,
   ) {
     mkdirSync(this.dataDir, { recursive: true });
     this.load();
@@ -84,11 +89,11 @@ export class BudgetLedger {
     }
   }
 
-  private dayKey(at = Date.now()): string {
+  private dayKey(at = this.now()): string {
     return new Date(at).toISOString().slice(0, 10);
   }
 
-  daily(at = Date.now()): DailyState {
+  daily(at = this.now()): DailyState {
     const key = this.dayKey(at);
     if (!this.state.daily[key]) this.state.daily[key] = { day: key, orchestrated: 0, passthrough: 0 };
     return this.state.daily[key]!;
@@ -101,7 +106,9 @@ export class BudgetLedger {
   /**
    * Drop per-task spend entries no longer tracked in memory (bounded budget
    * file growth on long-lived hosts). Daily totals are the authoritative
-   * limit; per-task records are diagnostic.
+   * limit; per-task records are diagnostic. Daily day-keys older than the
+   * 30-day retention window are dropped with them (v4: the daily map used to
+   * grow one key per day forever).
    */
   pruneTasks(keep: ReadonlySet<string>): void {
     for (const id of Object.keys(this.state.tasks)) {
@@ -110,14 +117,21 @@ export class BudgetLedger {
         this.dirty = true;
       }
     }
+    const cutoff = new Date(this.now() - RETENTION_DAYS * 86_400_000).toISOString().slice(0, 10);
+    for (const key of Object.keys(this.state.daily)) {
+      if (key < cutoff) {
+        delete this.state.daily[key];
+        this.dirty = true;
+      }
+    }
     if (this.dirty) this.flush();
   }
 
-  passthroughToday(at = Date.now()): number {
+  passthroughToday(at = this.now()): number {
     return this.daily(at).passthrough;
   }
 
-  estimatedToday(at = Date.now()): number {
+  estimatedToday(at = this.now()): number {
     return this.daily(at).orchestrated;
   }
 
@@ -142,7 +156,6 @@ export class BudgetLedger {
     const cost = rate ? (inputTokens * rate.input + outputTokens * rate.output) / 1_000_000 : 0;
     const { dailyLimitCny, taskLimitCny, countPassthrough } = this.limits();
     const day = this.daily();
-    const againstDaily = stage === 'passthrough' ? countPassthrough : true;
 
     if (stage !== 'passthrough') {
       const taskSpent = (this.state.tasks[taskId ?? '_global'] ?? 0) + cost;
@@ -155,11 +168,19 @@ export class BudgetLedger {
       day.orchestrated += cost;
       if (taskId) this.state.tasks[taskId] = taskSpent;
     } else {
+      // ADR #27 (revised, v4): passthrough is observed per-day unconditionally;
+      // with `count_passthrough: true` it ALSO bills against the daily hard
+      // limit, so a passthrough-heavy day blocks new orchestration tasks (the
+      // launch pre-check reads the same total). `false` (default) keeps the
+      // historic observe-only behaviour.
       day.passthrough += cost;
-      void againstDaily;
+      if (countPassthrough && day.orchestrated + cost > dailyLimitCny) {
+        return { ok: false, reason: 'daily_exhausted', dailySpent: day.orchestrated, taskSpent: 0, utilization: day.orchestrated / dailyLimitCny };
+      }
+      if (countPassthrough) day.orchestrated += cost;
     }
 
-    this.state.ledger.push({ taskId, stage, provider, model, inputTokens, outputTokens, costCny: cost, at: Date.now() });
+    this.state.ledger.push({ taskId, stage, provider, model, inputTokens, outputTokens, costCny: cost, at: this.now() });
     if (this.state.ledger.length > 5000) this.state.ledger = this.state.ledger.slice(-4000);
     this.dirty = true;
     this.flush();

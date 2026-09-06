@@ -32,12 +32,13 @@ export function skeletonPlan(plan: TaskSnapshot['plan']): string {
   });
 }
 
-/** Compact mechanical-verification line for the review prompt. */
+/** Compact mechanical-verification line for the review prompt (lint included, v4). */
 export function mechSummary(snap: TaskSnapshot): string {
   const m = snap.mechanicalResult;
-  if (!m || (!m.compile && !m.tests)) return '未运行';
-  const fmt = (c: { check: string; summary?: string } | undefined) => (c ? `${c.check}${c.summary ? `(${c.summary})` : ''}` : null);
-  return [fmt(m.compile), fmt(m.tests)].filter(Boolean).join(' / ') || '未运行';
+  if (!m || (!m.compile && !m.lint && !m.tests)) return '未运行';
+  const fmt = (label: string, c: { check: string; summary?: string } | undefined) =>
+    c ? `${label}:${c.check}${c.summary ? `(${c.summary})` : ''}` : null;
+  return [fmt('compile', m.compile), fmt('lint', m.lint), fmt('tests', m.tests)].filter(Boolean).join(' / ') || '未运行';
 }
 
 /** New-plan milestone (was the misspelled `MILESTONS_REPLAN_OK`, v3 E7). */
@@ -66,7 +67,14 @@ export function buildReplanDirective(task: OrchestratorTask, feedback: string): 
 
 export function buildFixDirectiveFromMechanical(task: OrchestratorTask): string {
   const mech = task.snapshot.mechanicalResult;
-  const detail = [mech?.compile?.summary ?? mech?.compile?.tail?.slice(0, 200), mech?.tests?.summary ?? mech?.tests?.tail?.slice(0, 200)]
+  // lint has no summary field — fall back to its output tail (v4)
+  const detail = [
+    mech?.compile?.summary ?? mech?.compile?.tail?.slice(0, 200),
+    mech?.lint?.check === 'fail'
+      ? `lint fail${mech.lint.tail ? `：${mech.lint.tail.slice(0, 200)}` : ''}`
+      : undefined,
+    mech?.tests?.summary ?? mech?.tests?.tail?.slice(0, 200),
+  ]
     .filter(Boolean)
     .join('\n');
   return `【修复指令】复核通过但机械验证失败，请修复以下验证问题：\n${detail}`;

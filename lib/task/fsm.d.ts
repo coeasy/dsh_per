@@ -42,6 +42,8 @@ export declare class OrchestratorTask {
     } | undefined;
     /** serialized hook execution to keep transitions ordered per task */
     private queue;
+    /** wall clock seam (v4): injectable so transition timestamps are testable */
+    private readonly now;
     constructor(init: {
         id: string;
         sessionId: string;
@@ -51,6 +53,8 @@ export declare class OrchestratorTask {
         limits: TaskLimits;
         flags?: Partial<EngineFlags>;
         gateDecision?: TaskSnapshot['gateDecision'];
+        /** defaults to Date.now; the engine injects its clock seam */
+        now?: () => number;
     });
     get state(): TaskState;
     get id(): string;
