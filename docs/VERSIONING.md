@@ -25,9 +25,9 @@ v0.1.0
 
 ## 内部文档版本不是发布版本
 
-仓库历史上使用过 `v1 / v2 / v3 / v4 / v5` 等编号描述方案、设计定稿或重构轮次。这些编号只代表**文档修订号 / 内部实施批次**，不得映射成 npm 或 GitHub Release 的语义版本。
+仓库历史上的设计编号只代表**文档修订号 / 内部实施批次**，不得映射成 npm 或 GitHub Release 的语义版本。
 
-后续文档建议改用：
+后续文档建议使用：
 
 - Round A / B / C；
 - Phase A / B / C；
@@ -41,13 +41,13 @@ v0.1.0
 
 `main` 是唯一长期发布分支。fix / refactor / docs / release 分支只用于短期工作，合并后应删除或重新对齐到 `main`。
 
-未经用户明确批准，不创建类似：
+未经用户明确批准，不使用带未来正式版本号的分支名；应改用主题式命名，例如：
 
-- `release/v0.2.0`；
-- `release/v0.4.1`；
-- `refactor/v1.0.0`。
+- `release/publish-pipeline`；
+- `refactor/runtime-state`；
+- `fix/snapshot-recovery`。
 
-即使历史分支名称中曾出现更高版本号，也不代表该版本曾正式发布。详细分支规则见 `docs/BRANCHING_AND_RELEASE.md`。
+即使历史分支名称中曾出现其他版本号，也不代表那些版本曾正式发布。详细分支规则见 `docs/BRANCHING_AND_RELEASE.md`。
 
 ## 版本变更规则
 
