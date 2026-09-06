@@ -8,7 +8,7 @@
 - 把任务拆成可执行步骤；
 - 在修改过程中控制风险；
 - 完成后由独立视角检查；
-- 运行真实的 build / lint / tests；
+- 运行真实 build / lint / tests；
 - 失败时继续修复，而不是提前宣布完成；
 - 在成本、调用数和时间超限前及时停止。
 
@@ -16,13 +16,13 @@
 
 ## 一句话介绍
 
-**dsh-per 把复杂任务组织成 Plan → Execute → Review → Verify 的受控流水线，让多个模型各司其职，并用状态机、预算、降级与机械验证把整个过程约束在可审计的边界内。**
+**dsh-per 把复杂任务组织成 Plan → Execute → Review → Verify 的受控流水线，让多个模型各司其职，并用状态机、预算、降级与机械验证把整个过程约束在可审计边界内。**
 
 ## 它解决什么问题
 
-### 1. 一个模型同时规划、执行、检查，容易自我确认
+### 一个模型同时规划、执行、检查，容易自我确认
 
-传统单 Agent 流程经常出现：自己提出方案、自己执行、最后再自己判断“已经完成”。
+传统单 Agent 流程经常出现：自己提出方案、自己执行，最后再自己判断“已经完成”。
 
 dsh-per 把职责拆开：
 
@@ -33,9 +33,9 @@ Reviewer 负责挑问题
 Mechanical Verify 负责给出机器可验证的事实
 ```
 
-不同角色之间有结构化协议，而不是靠模糊的自然语言约定。
+不同角色之间使用结构化协议，而不是依赖模糊自然语言约定。
 
-### 2. “模型说测试通过”不等于测试真的通过
+### “模型说测试通过”不等于测试真的通过
 
 dsh-per 可以直接运行：
 
@@ -45,11 +45,11 @@ lint
 tests
 ```
 
-如果 reviewer 判断通过，但真实命令失败，任务依然不会被标记为成功，而是进入修复路径。
+如果 reviewer 判断通过，但真实命令失败，任务依然不会被标记为成功，而会进入修复路径。
 
-### 3. 复杂任务容易无限迭代
+### 复杂任务容易无限迭代
 
-dsh-per 对下面这些维度设置明确边界：
+dsh-per 对这些维度设置明确边界：
 
 - 修复轮次；
 - 重规划次数；
@@ -59,9 +59,9 @@ dsh-per 对下面这些维度设置明确边界：
 - 日预算；
 - 单任务预算。
 
-目标不是让任务“永远努力下去”，而是在可控范围内尽可能完成；无法确认时明确 Flagged 或 Abort。
+目标不是让任务“永远努力”，而是在可控范围内尽可能完成；无法确认时明确 Flagged 或 Abort。
 
-### 4. 一个模型或 provider 不稳定时，整个任务不应直接崩掉
+### 一个模型或 provider 不稳定时，整条任务不应直接崩掉
 
 dsh-per 提供模型健康窗口、circuit breaker、半开与 fallback chain，可以按阶段定义失败策略。
 
@@ -150,13 +150,20 @@ config: {}
 
 ## 30 秒开始使用
 
-安装当前正式版本：
+本文档直接使用 DSH Web 的 `web` profile，命令可以直接复制：
 
 ```bash
+# 安装
 dsh plugin --profile web add dsh-per@0.1.0
+
+# 确认
+dsh plugin --profile web list --depth 0
+
+# 启动
+dsh --profile web
 ```
 
-配置 plan / execute / review 三个模型后，在会话里直接：
+进入 Web 后配置 plan / execute / review 三个模型，然后执行：
 
 ```text
 /per 修复这个项目的 CI，完成后运行测试并检查是否达到发布条件
@@ -242,10 +249,16 @@ dsh plugin --profile web add dsh-per@0.1.0
 
 ## 开始
 
-安装：
+直接安装到 DSH Web：
 
 ```bash
-dsh plugin --profile <profile> add dsh-per@0.1.0
+dsh plugin --profile web add dsh-per@0.1.0
+```
+
+然后：
+
+```bash
+dsh --profile web
 ```
 
 进一步阅读：

@@ -1,241 +1,143 @@
 # dsh-per 安装指南
 
-本文覆盖 dsh-per 的主要安装方式、安装验证、升级、重装、卸载和常见安装问题。当前正式版本为 **v0.1.0**。
+当前正式版本：**v0.1.0**。
 
-## 1. 先看最常用的安装方式
+本文所有默认命令都直接使用 DSH Web 的 `web` profile，方便复制执行。只有“自定义 profile”一节使用具体名称 `my-team` 说明替换方法，不使用尖括号占位符。
 
-如果你平时使用 DSH Web，直接执行：
+## 1. 推荐安装：npm 固定版本
 
 ```bash
 dsh plugin --profile web add dsh-per@0.1.0
 ```
 
-然后使用同一个 `web` profile 启动：
+含义：把 npm 上的 `dsh-per@0.1.0` 安装到 DSH 的 `web` profile。
 
-```bash
-dsh --profile web
-```
-
-验证插件是否已经安装：
+安装后确认：
 
 ```bash
 dsh plugin --profile web list --depth 0
 ```
 
-如果列表中能看到：
+应能看到：
 
 ```text
 dsh-per 0.1.0
 ```
 
-说明 npm 包已经装进 `web` profile。
-
-## 2. `--profile web` 到底是什么意思？
-
-DSH 使用 **profile** 来表示一套独立的运行配置和插件组合。
-
-可以把它理解成：
-
-```text
-一个 profile = 一套 DSH 配置 + 一组插件 + 一组 bundle/patch
-```
-
-例如官方常见的 Web 使用方式是：
+然后启动同一个 profile：
 
 ```bash
 dsh --profile web
 ```
 
-因此，要让 dsh-per 在这个 Web 环境里生效，就应该把它安装到同一个 `web` profile：
+最重要的规则：**安装到哪个 profile，运行时就使用哪个 profile。**
+
+## 2. 命令逐项解释
 
 ```bash
 dsh plugin --profile web add dsh-per@0.1.0
 ```
-
-### 文档中的 `<profile>` 是占位符
-
-下面这种写法：
-
-```bash
-dsh plugin --profile <profile> add dsh-per@0.1.0
-```
-
-不是让你原样复制 `<profile>`。
-
-你必须把 `<profile>` 换成实际 profile 名称。
-
-如果使用 Web：
-
-```bash
-dsh plugin --profile web add dsh-per@0.1.0
-```
-
-如果你自己有一个名为 `my-team` 的 profile：
-
-```bash
-dsh plugin --profile my-team add dsh-per@0.1.0
-```
-
-之后运行时也应使用同一个 profile：
-
-```bash
-dsh --profile my-team
-```
-
-最重要的一条规则：
-
-> **插件安装到哪个 profile，运行 DSH 时就要使用哪个 profile。**
-
-## 3. 安装命令逐项解释
-
-以这条命令为例：
-
-```bash
-dsh plugin --profile web add dsh-per@0.1.0
-```
-
-含义如下：
 
 | 部分 | 含义 |
 | --- | --- |
-| `dsh` | 调用 DeepSeek Harness / DSH CLI |
-| `plugin` | 进入 profile 插件管理 |
-| `--profile web` | 操作名为 `web` 的 profile |
-| `add` | 安装一个依赖/插件 |
+| `dsh` | DSH CLI |
+| `plugin` | profile 插件管理 |
+| `--profile web` | 操作 `web` profile |
+| `add` | 安装插件/依赖 |
 | `dsh-per` | npm 包名 |
-| `@0.1.0` | 固定安装 dsh-per 的 0.1.0 版本 |
+| `@0.1.0` | 固定安装 0.1.0 |
 
-所以整条命令可以理解成：
+## 3. 前置条件
 
-> **把 npm 上的 `dsh-per@0.1.0` 安装到 DSH 的 `web` profile 中。**
-
-## 4. 前置条件
-
-### 4.1 DeepSeek Harness / DSH CLI
-
-先确认 `dsh` 可以执行：
+### DSH CLI
 
 ```bash
 dsh --help
 ```
 
-通用插件管理命令格式是：
+### pnpm
 
-```bash
-dsh plugin --profile <你的-profile-名称> <pnpm-command...>
-```
-
-DSH 会在目标 profile 中执行对应的 pnpm 操作，并在操作成功后重新计算已安装的 bundle 层。
-
-### 4.2 pnpm
-
-当前 DSH 的 profile 插件管理依赖 pnpm，请确认：
+DSH 当前 profile 插件管理会调用 pnpm：
 
 ```bash
 pnpm --version
 ```
 
-仓库开发环境固定使用 `pnpm@9.15.9`。如果只是通过 DSH 安装插件，优先遵循你当前 Harness/DSH 环境对 pnpm 的要求。
+### Node.js
 
-### 4.3 Node.js
-
-`dsh-per` package 声明：
+`dsh-per` package 要求：
 
 ```text
 Node.js >= 22
 ```
 
-如果需要从源码构建或本地调试，请确认：
+需要本地构建时确认：
 
 ```bash
 node --version
 ```
 
-## 5. 推荐方式：npm 固定版本
+## 4. npm latest
 
-对于普通用户、生产环境和团队环境，推荐：
-
-```bash
-dsh plugin --profile web add dsh-per@0.1.0
-```
-
-如果不是 `web` profile，则把 `web` 换成你的实际 profile 名称。
-
-优点：
-
-- 安装最快；
-- 版本明确；
-- 不受 npm latest 后续变化影响；
-- 适合团队统一环境。
-
-## 6. npm latest
-
-如果希望直接使用 npm 当前默认版本：
+如果希望安装 npm 当前 latest：
 
 ```bash
 dsh plugin --profile web add dsh-per
 ```
 
-当前 npm 正式版本就是 `0.1.0`。
-
-正式环境仍建议显式固定版本：
+当前 latest 为 `0.1.0`。生产和团队环境仍推荐固定版本：
 
 ```bash
 dsh plugin --profile web add dsh-per@0.1.0
 ```
 
-## 7. GitHub tag 安装
+## 5. GitHub tag 安装
 
-npm 访问受限时，可以从正式 Git tag 安装：
+npm 访问受限时，可直接安装正式 Git tag：
 
 ```bash
 dsh plugin --profile web add git+https://github.com/coeasy/dsh_per.git#v0.1.0
 ```
 
-这种方式绑定正式 Git tag，也适合需要从 GitHub 直接获取源码构建产物的环境。
+适合：
 
-## 8. GitHub main 安装
+- npm 访问受限；
+- 希望明确绑定 Git tag；
+- 需要直接从 GitHub 获取包源码。
 
-只建议测试当前主线，不建议生产环境使用：
+## 6. GitHub main 安装
+
+只用于测试主线，不建议生产使用：
 
 ```bash
 dsh plugin --profile web add git+https://github.com/coeasy/dsh_per.git#main
 ```
 
-`main` 会持续变化；正式环境应优先使用 npm 固定版本或 `v0.1.0` tag。
+正式环境优先固定 npm 版本或 `v0.1.0` tag。
 
-## 9. GitHub Release tarball 安装
+## 7. GitHub Release tarball
 
-GitHub Release 提供：
+Release 资产：
 
 ```text
 dsh-per-0.1.0.tgz
 ```
 
-下载后，可以直接安装本地 tarball。
-
-### Windows
+Windows：
 
 ```powershell
 dsh plugin --profile web add C:\Downloads\dsh-per-0.1.0.tgz
 ```
 
-### macOS / Linux
+macOS / Linux：
 
 ```bash
 dsh plugin --profile web add ~/Downloads/dsh-per-0.1.0.tgz
 ```
 
-适合：
+适合离线分发、内网归档和指定产物安装。
 
-- 离线分发；
-- 内网环境；
-- 归档安装；
-- 指定 Release 产物安装。
-
-## 10. 从本地源码安装
-
-适合开发和调试：
+## 8. 本地源码安装
 
 ```bash
 git clone https://github.com/coeasy/dsh_per.git
@@ -244,31 +146,25 @@ pnpm install --no-frozen-lockfile
 pnpm run build
 ```
 
-如果要安装到 Web profile：
+安装当前目录到 Web profile：
 
 ```bash
 dsh plugin --profile web add .
 ```
 
-也可以使用绝对路径。
-
-### Windows
+Windows 绝对路径示例：
 
 ```powershell
 dsh plugin --profile web add D:\github\dsh_per
 ```
 
-### macOS / Linux
+macOS / Linux 绝对路径示例：
 
 ```bash
 dsh plugin --profile web add /home/user/github/dsh_per
 ```
 
-DSH 会把相对文件路径锚定到你运行命令时的目录，再交给 pnpm 处理。
-
-## 11. `file:` / `link:` 本地安装
-
-因为 `dsh plugin` 会把参数转发给 pnpm，也可以使用 pnpm 文件依赖语法。
+## 9. `file:` / `link:` 本地开发
 
 复制式本地依赖：
 
@@ -282,65 +178,67 @@ dsh plugin --profile web add file:.
 dsh plugin --profile web add link:.
 ```
 
-开发时希望源码变化快速反映到 profile，可考虑 `link:`；正式使用建议 npm 固定版本。
+开发阶段可使用 `link:`；正式使用推荐 npm 固定版本。
 
-## 12. 安装后怎么启动？
+## 10. 自定义 profile
 
-如果安装到了 `web`：
+如果你的 DSH profile 叫 `my-team`，使用同一个具体名称完成所有操作：
+
+安装：
 
 ```bash
-dsh --profile web
+dsh plugin --profile my-team add dsh-per@0.1.0
 ```
 
-如果安装到了自定义 `my-team`：
+查看：
+
+```bash
+dsh plugin --profile my-team list --depth 0
+```
+
+启动：
 
 ```bash
 dsh --profile my-team
 ```
 
-不要把插件装在一个 profile，却启动另一个 profile，否则运行环境里不会加载你刚安装的插件。
-
-## 13. 安装后验证
-
-以 Web profile 为例：
+更新：
 
 ```bash
-dsh plugin --profile web list --depth 0
+dsh plugin --profile my-team update dsh-per
 ```
 
-确认存在：
+卸载：
 
-```text
-dsh-per 0.1.0
+```bash
+dsh plugin --profile my-team remove dsh-per
 ```
 
-启动 DSH Web：
+不要把插件安装在 `my-team`，却用 `web` 启动；反过来也一样。
+
+## 11. 安装后首次启动
+
+默认 Web profile：
 
 ```bash
 dsh --profile web
 ```
 
-进入会话后执行：
-
-```text
-/orch status
-```
-
-如果插件已经加载但尚未配置 stages，状态会提示阶段模型未配置；这是正常的默认 inert 行为。
-
-## 14. 首次启用
-
-安装完成不代表自动接管所有任务。dsh-per 默认 `config: {}`，没有配置 `stages` 时保持 passthrough。
-
-你可以在：
+进入 Web 后打开：
 
 ```text
 Settings → Plugins → dsh-per
 ```
 
-配置常用模型和预算，也可以使用 profile patch 覆盖 `per` 行。
+配置 plan / execute / review 模型，然后执行：
 
-最小示例：
+```text
+/orch status
+```
+
+如果提示“阶段模型未配置”，说明插件已加载，但还没有完成 stages 配置。
+
+## 12. 最小启用配置
 
 ```yaml
 - id: per
@@ -358,31 +256,29 @@ Settings → Plugins → dsh-per
         reasoning_effort: high
 ```
 
-完整配置见 [CONFIGURATION.md](CONFIGURATION.md)。
+没有 `stages` 时，dsh-per 按设计保持 inert / passthrough。
 
-## 15. 更新
+## 13. 更新
 
-### 更新 npm 安装
-
-Web profile：
+npm 安装：
 
 ```bash
 dsh plugin --profile web update dsh-per
 ```
 
-如果希望继续固定正式版本，可以重新执行：
+重新固定正式版本：
 
 ```bash
 dsh plugin --profile web add dsh-per@0.1.0
 ```
 
-### 更新 GitHub 安装
+GitHub tag：
 
 ```bash
 dsh plugin --profile web add git+https://github.com/coeasy/dsh_per.git#v0.1.0
 ```
 
-### 更新本地源码
+本地源码：
 
 ```bash
 git pull
@@ -391,72 +287,65 @@ pnpm run build
 dsh plugin --profile web add .
 ```
 
-## 16. 卸载
-
-如果插件安装在 Web profile：
+## 14. 卸载
 
 ```bash
 dsh plugin --profile web remove dsh-per
 ```
 
-DSH 在 pnpm 删除成功后会重新计算 profile bundle 列表，使 dsh-per 不再作为该 profile 的 layer 加载。
-
-卸载后验证：
+卸载后确认：
 
 ```bash
 dsh plugin --profile web list --depth 0
 ```
 
-## 17. 重装
+## 15. 重装
 
 ```bash
 dsh plugin --profile web remove dsh-per
 dsh plugin --profile web add dsh-per@0.1.0
 ```
 
-如果你使用的是其他 profile，请把两条命令里的 `web` 一起替换成实际 profile 名称。
+## 16. Git 安装提示
 
-## 18. Git 安装提示
+如果 Git 依赖安装失败，并且 pnpm 明确提示构建脚本被 `allowBuilds` 阻止，请按 DSH 输出的 profile 目录和精确 package key 修改对应 `pnpm-workspace.yaml` 后重试。
 
-DSH 上游会在 Git 依赖安装失败时提示 profile 目录位置。某些 pnpm 版本可能限制 Git 依赖的构建脚本；如果 pnpm 明确提示 `allowBuilds`，按它输出的精确 package key 写入目标 profile 的 `pnpm-workspace.yaml` 后重试。
+不要在没有错误提示时预先放宽依赖构建权限。
 
-不要在没有错误提示时预先放宽构建脚本权限。
-
-## 19. 选择哪一种方式
+## 17. 推荐方式一览
 
 | 场景 | 推荐命令/方式 |
 | --- | --- |
 | DSH Web 普通用户 | `dsh plugin --profile web add dsh-per@0.1.0` |
+| npm latest | `dsh plugin --profile web add dsh-per` |
 | 团队/生产 | 固定 npm 版本 |
 | npm 访问受限 | GitHub `v0.1.0` tag |
 | 离线/内网 | Release tarball |
 | 插件开发 | 本地目录或 `link:` |
 | 测试主线 | GitHub `main`，仅测试使用 |
 
-## 20. 最短上手流程
-
-如果你只是想立即用起来，按下面顺序执行：
+## 18. 最短上手流程
 
 ```bash
-# 1. 安装到 Web profile
+# 1. 安装
 dsh plugin --profile web add dsh-per@0.1.0
 
-# 2. 确认已安装
+# 2. 确认
 dsh plugin --profile web list --depth 0
 
-# 3. 启动同一个 Web profile
+# 3. 启动
 dsh --profile web
 ```
 
 进入 Web 后：
 
 1. 打开 `Settings → Plugins → dsh-per`；
-2. 配置 plan / execute / review 模型；
-3. 在会话里执行 `/orch status`；
-4. 用 `/per <任务>` 强制启动一次编排任务进行验证。
+2. 配置 plan / execute / review；
+3. 执行 `/orch status`；
+4. 执行 `/per 重构当前模块并运行测试` 验证完整编排。
 
-## 21. 下一步
+## 19. 相关文档
 
-- 首次使用：[USAGE.md](USAGE.md)
-- 完整配置：[CONFIGURATION.md](CONFIGURATION.md)
-- 安装和运行问题：[TROUBLESHOOTING.md](TROUBLESHOOTING.md)
+- [使用指南](USAGE.md)
+- [配置参考](CONFIGURATION.md)
+- [故障排查](TROUBLESHOOTING.md)

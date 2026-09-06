@@ -35,67 +35,41 @@
 
 ## 30 秒安装
 
-### 如果你使用 DSH Web（推荐示例）
+本文档和 `docs/` 下所有面向用户的命令，**默认统一使用 DSH Web 的 `web` profile**，这样命令可以直接复制执行。
 
-直接复制下面这条命令：
+### 1. 安装固定版本
 
 ```bash
 dsh plugin --profile web add dsh-per@0.1.0
 ```
 
-这条命令的含义：
+这条命令的意思是：把 npm 上的 `dsh-per@0.1.0` 安装到 DSH 的 `web` profile。
 
-```text
-dsh                 使用 DSH CLI
-plugin              进入插件管理
---profile web        把插件安装到名为 web 的 DSH profile
-add                  执行安装
- dsh-per@0.1.0       安装 npm 包 dsh-per，并固定版本为 0.1.0
-```
-
-安装完成后，仍然使用同一个 profile 启动 DSH Web：
-
-```bash
-dsh --profile web
-```
-
-验证插件是否已经装进 `web` profile：
+### 2. 确认已经安装
 
 ```bash
 dsh plugin --profile web list --depth 0
 ```
 
-### `<profile>` 到底是什么？
+应能看到：
 
-文档中的 `<profile>` 只是**占位符**，不要把尖括号原样输入。
-
-如果你使用官方常见的 Web profile，就把 `<profile>` 替换成 `web`：
-
-```bash
-dsh plugin --profile web add dsh-per@0.1.0
+```text
+dsh-per 0.1.0
 ```
 
-如果你自己创建了一个名为 `my-team` 的 profile，则写成：
+### 3. 启动同一个 Web profile
 
 ```bash
-dsh plugin --profile my-team add dsh-per@0.1.0
+dsh --profile web
 ```
 
-关键原则是：**插件安装到哪个 profile，运行时也要使用同一个 profile。**
-
-通用命令格式仅用于说明语法：
-
-```bash
-dsh plugin --profile <你的-profile-名称> add dsh-per@0.1.0
-```
+> 如果你使用自定义 profile，请在安装、查看、更新、卸载和启动时始终使用同一个 profile 名称。完整示例见 [安装指南](docs/INSTALLATION.md)。
 
 也可以安装 npm 当前 latest：
 
 ```bash
 dsh plugin --profile web add dsh-per
 ```
-
-更多方式：GitHub tag、本地源码、Release tarball、升级、卸载、验证，请看 **[完整安装指南](docs/INSTALLATION.md)**。
 
 ## 最小启用配置
 
@@ -119,44 +93,71 @@ dsh plugin --profile web add dsh-per
 
 未配置 `stages` 时，插件不会接管普通会话。
 
+## 第一次验证
+
+启动 DSH Web 后，在会话中执行：
+
+```text
+/orch status
+```
+
+然后强制执行一次编排任务：
+
+```text
+/per 重构当前模块，保持外部 API 不变，并在完成后运行测试
+```
+
 ## 常用命令
 
 ```text
-/per <任务>        强制当前任务进入编排
-/per on            本会话全部进入编排
-/per off           本会话全部透传
-/per auto          恢复自动门禁
-/orch status       查看模式、模型、预算和活动任务
-/orch budget       查看今日编排与透传消耗
-/orch task <目标>  强制启动编排任务
-/orch passthrough  下一条消息一次性透传
-/orch abort        终止当前编排任务
+/per 重构当前模块并运行测试
+/per on
+/per off
+/per auto
+/orch status
+/orch budget
+/orch task 修复当前项目 CI 并验证所有测试
+/orch passthrough
+/orch abort
 ```
 
-会话级临时切换模型：
+会话级临时切换模型示例：
 
 ```text
-/orch set plan=<model> execute=<model> review=<model>
+/orch set plan=vendor/planner execute=vendor/executor review=vendor/reviewer
 /orch reset
 /orch save
 ```
 
 完整命令和典型工作流见 **[使用指南](docs/USAGE.md)**。
 
+## 安装方式
+
+| 场景 | 推荐方式 |
+| --- | --- |
+| DSH Web 普通用户 | `dsh plugin --profile web add dsh-per@0.1.0` |
+| npm latest | `dsh plugin --profile web add dsh-per` |
+| npm 访问受限 | GitHub `v0.1.0` tag |
+| 离线/内网 | GitHub Release tarball |
+| 插件开发 | 本地目录或 `link:` |
+| 测试主线 | GitHub `main`，仅测试使用 |
+
+完整命令见 **[安装指南](docs/INSTALLATION.md)**。
+
 ## 文档导航
 
 | 文档 | 内容 |
 | --- | --- |
-| [文档首页](docs/README.md) | 文档地图与推荐阅读顺序 |
-| [安装指南](docs/INSTALLATION.md) | npm / 固定版本 / GitHub / 本地 / tarball / 更新 / 卸载 |
-| [使用指南](docs/USAGE.md) | 从首次启用到日常命令、典型任务和工作流 |
+| [文档首页](docs/README.md) | 文档地图、默认 `web` profile 约定与阅读顺序 |
+| [安装指南](docs/INSTALLATION.md) | npm / GitHub / 本地 / tarball / 更新 / 卸载 / 自定义 profile |
+| [使用指南](docs/USAGE.md) | 从启动 Web 到 `/per`、`/orch` 和典型工作流 |
 | [配置参考](docs/CONFIGURATION.md) | stages、gate、预算、验证、熔断、风险等完整配置 |
-| [故障排查](docs/TROUBLESHOOTING.md) | 安装失败、插件未启用、模型配置、验证失败等 |
+| [故障排查](docs/TROUBLESHOOTING.md) | 安装失败、插件未启用、模型、预算、验证等问题 |
 | [项目介绍与宣传稿](docs/PROMOTION.md) | 面向社区、团队和用户的项目介绍 |
 | [架构与重构计划](docs/PROJECT_OVERVIEW_AND_REFACTOR_PLAN.md) | 项目结构、风险与后续改进路线 |
-| [版本策略](docs/VERSIONING.md) | 为什么当前所有正式版本面统一为 v0.1.0 |
+| [版本策略](docs/VERSIONING.md) | 正式版本治理 |
 | [分支与发布](docs/BRANCHING_AND_RELEASE.md) | main、短期分支、CI、npm 与 Release 规则 |
-| [E2E 基线](docs/E2E测试报告-v0.1.0.md) | 当前正式版本的端到端验证记录 |
+| [E2E 基线](docs/E2E测试报告-v0.1.0.md) | 当前正式版本端到端验证记录 |
 
 ## 代码结构
 

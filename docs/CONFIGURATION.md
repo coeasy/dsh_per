@@ -1,6 +1,13 @@
 # dsh-per 配置参考
 
-本文按当前 `src/config/schema.ts` 整理 dsh-per 的配置项。当前正式版本为 **v0.1.0**。
+当前正式版本：**v0.1.0**。
+
+本文按当前 `src/config/schema.ts` 整理配置项。所有运行示例默认假设插件已经安装到 DSH Web 的 `web` profile：
+
+```bash
+dsh plugin --profile web add dsh-per@0.1.0
+dsh --profile web
+```
 
 ## 1. 最小配置
 
@@ -23,8 +30,6 @@
 如果 `stages` 缺失，插件保持 passthrough。
 
 ## 2. 顶层配置
-
-当前顶层键：
 
 ```text
 mode
@@ -51,7 +56,7 @@ mode: auto
 - `passthrough`
 - `gated`
 
-会话内还可以用 `/per on|off|auto` 覆盖行为。
+会话内还可通过 `/per on`、`/per off`、`/per auto` 覆盖。
 
 ## 4. `gate`
 
@@ -74,20 +79,19 @@ gate:
   default: orchestrate
 ```
 
-说明：
+字段含义：
 
-- `passthrough_patterns`：优先透传模式匹配；
+- `passthrough_patterns`：优先透传模式；
 - `orchestrate_patterns`：倾向进入编排的模式；
 - `modify_intent_verbs`：修改意图词；
-- `short_len`：短文本阈值；
-- `long_len`：长文本阈值；
-- `default`：无法明确判定时使用 `orchestrate` 或 `passthrough`。
+- `short_len` / `long_len`：文本长度阈值；
+- `default`：无法明确判断时使用 `orchestrate` 或 `passthrough`。
 
-坏正则会被安全跳过并告警，不应拖垮插件启动。
+坏正则会被安全跳过并告警。
 
 ## 5. `stages`
 
-### 5.1 通用 stage 字段
+通用字段：
 
 ```yaml
 model: vendor/model
@@ -97,22 +101,13 @@ on_failure: auto_degrade
 fallback_chain: []
 ```
 
-字段：
-
-- `model`：必填模型标识；
+- `model`：模型标识；
 - `provider`：可选 provider；
 - `reasoning_effort`：`off | low | medium | high | max`；
 - `on_failure`：`hard_fail | auto_degrade`；
 - `fallback_chain`：失败后的模型候选数组。
 
-### 5.2 plan
-
-默认：
-
-- `reasoning_effort: high`
-- `on_failure: hard_fail`
-
-示例：
+### plan
 
 ```yaml
 stages:
@@ -122,9 +117,7 @@ stages:
     on_failure: hard_fail
 ```
 
-### 5.3 execute
-
-默认 `reasoning_effort: low`。
+### execute
 
 ```yaml
 stages:
@@ -134,7 +127,7 @@ stages:
     on_failure: auto_degrade
 ```
 
-### 5.4 review
+### review
 
 ```yaml
 stages:
@@ -145,15 +138,15 @@ stages:
     input_token_budget: 50000
 ```
 
-`dimensions`：
+`dimensions` 可选：
 
 - `full`
 - `defects_only`
 - `consistency_only`
 
-### 5.5 plan audit
+### plan audit
 
-可配置 0–2 个：
+最多两个：
 
 ```yaml
 stages:
@@ -177,11 +170,7 @@ fix_loop:
   minor_issues: report_only
 ```
 
-字段：
-
-- `max_cycles`：最大修复轮次；
 - `strategy`：`incremental | batch`；
-- `escalate_after_consecutive_fails`：连续失败多少次后升级处理；
 - `exhausted_delivery`：`flagged | abort`；
 - `minor_issues`：`report_only | fix`。
 
@@ -198,20 +187,9 @@ mechanical_verification:
   parallel: false
 ```
 
-当前命令字段是字符串：
+当前 schema 中 `compile` / `tests` / `lint` 都是**字符串命令**，不要写成 `{ cmd, cwd }` 对象。
 
-```text
-compile?: string
-tests?: string
-lint?: string
-```
-
-不要写成 `{ cmd, cwd }` 对象。
-
-- `timeout_ms`：单次机械验证超时上限；
-- `parallel`：是否并行执行命令，默认 false。
-
-如果 tests 依赖 compile 输出，建议保持串行。
+如果 tests 依赖 compile 输出，建议保持 `parallel: false`。
 
 ## 8. `limits`
 
@@ -225,7 +203,7 @@ limits:
   execution_log_max: 200
 ```
 
-用于限制重试、重规划、步骤数和快照中的执行日志规模。
+用于限制重试、重规划、执行步骤和快照中的日志规模。
 
 ## 9. `circuit_breaker`
 
@@ -238,7 +216,7 @@ circuit_breaker:
   audit_dispatch_timeout_ms: 180000
 ```
 
-目的：避免一个任务无限消耗调用、token、时间或被挂起的 reviewer/auditor 永久阻塞。
+避免单个任务无限消耗调用、token、时间，或被挂起的 reviewer/auditor 永久阻塞。
 
 ## 10. `budget`
 
@@ -252,7 +230,7 @@ budget:
   pricing_unknown: null
 ```
 
-### 自定义价格
+自定义价格：
 
 ```yaml
 budget:
@@ -264,23 +242,16 @@ budget:
 
 价格单位：人民币 / 百万 token。
 
-### 未知模型价格
-
-默认：
+未知模型也可以设置兜底价格：
 
 ```yaml
-pricing_unknown: null
+budget:
+  pricing_unknown:
+    input: 1.0
+    output: 2.0
 ```
 
-也可以设置兜底价格：
-
-```yaml
-pricing_unknown:
-  input: 1.0
-  output: 2.0
-```
-
-如果模型既不在内置表也不在 `pricing` 中，而 `pricing_unknown` 为 null，该模型会以估算 ¥0 记账；这会降低预算护栏效果，因此生产环境建议给自定义模型明确价格。
+生产环境建议给自定义模型明确价格，否则预算护栏可能失真。
 
 ## 11. `visibility`
 
@@ -291,8 +262,8 @@ visibility:
 
 可选：
 
-- `milestone_push`：推送任务里程碑；
-- `quiet`：中间过程尽量静默，只在关键终态发声。
+- `milestone_push`
+- `quiet`
 
 ## 12. `risk_profile`
 
@@ -305,7 +276,7 @@ risk_profile:
   high_diff_lines: 500
 ```
 
-用于标记敏感路径和较大 diff 阈值，帮助风险判断更保守。
+用于让敏感路径和较大 diff 进入更保守的风险判断。
 
 ## 13. 完整示例
 
@@ -390,18 +361,38 @@ risk_profile:
   > schema 默认值
 ```
 
-`/orch set` 当前只覆盖 plan / execute / review 的 model。
+`/orch set` 只覆盖 plan / execute / review 的 model。
+
+具体示例：
+
+```text
+/orch set plan=vendor/planner execute=vendor/executor review=vendor/reviewer
+```
 
 ## 15. 配置建议
 
 - 初次使用先只配 plan / execute / review；
-- provider 不支持某个 reasoning effort 时显式调整，不要假设所有 provider 都支持同一档位；
+- provider 不支持某个 reasoning effort 时显式调整；
 - 生产环境给自定义模型配置价格；
-- 机械验证先串行，确认任务互不依赖后再考虑 parallel；
-- fallback chain 当前仍应避免依赖模糊的跨 provider 解释；
-- 敏感目录尽量写成明确 glob。
+- 机械验证先串行；
+- fallback chain 避免依赖模糊的跨 provider 解释；
+- 敏感目录写成明确 glob。
 
-## 16. 相关文档
+## 16. 验证配置是否生效
+
+启动 Web profile：
+
+```bash
+dsh --profile web
+```
+
+然后在会话中：
+
+```text
+/orch status
+```
+
+## 17. 相关文档
 
 - [安装指南](INSTALLATION.md)
 - [使用指南](USAGE.md)
