@@ -1,0 +1,128 @@
+name: release
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - VERSION
+      - package.json
+      - .github/workflows/release.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  id-token: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+          run_install: false
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22.x'
+          registry-url: https://registry.npmjs.org
+
+      - name: Resolve version
+        id: version
+        shell: bash
+        run: |
+          VERSION="$(tr -d '[:space:]' < VERSION)"
+          PACKAGE_VERSION="$(node -p "require('./package.json').version")"
+          if [ "$VERSION" != "$PACKAGE_VERSION" ]; then
+            echo "VERSION ($VERSION) != package.json ($PACKAGE_VERSION)" >&2
+            exit 1
+          fi
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "tag=v${VERSION}" >> "$GITHUB_OUTPUT"
+
+      - name: Version contract
+        run: node scripts/check-version.mjs
+
+      - name: Install dependencies
+        run: pnpm install --no-frozen-lockfile
+
+      - name: Type-check
+        run: pnpm exec tsc --noEmit -p tsconfig.json
+
+      - name: Test suite
+        run: pnpm exec vitest run --reporter=default
+
+      - name: Build
+        run: pnpm run build
+
+      - name: Transition-table invariants
+        run: pnpm run ci:checks
+
+      - name: Pack plugin
+        id: pack
+        shell: bash
+        run: |
+          npm pack --json > pack.json
+          TARBALL="$(node -e "const p=require('./pack.json'); process.stdout.write(p[0].filename)")"
+          test -f "$TARBALL"
+          echo "tarball=${TARBALL}" >> "$GITHUB_OUTPUT"
+
+      - name: Decide npm publish
+        id: npm
+        shell: bash
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          if [ -z "$NODE_AUTH_TOKEN" ]; then
+            echo "publish=false" >> "$GITHUB_OUTPUT"
+            echo "reason=NPM_TOKEN is not configured" >> "$GITHUB_OUTPUT"
+          elif npm view "dsh-per@${VERSION}" version >/dev/null 2>&1; then
+            echo "publish=false" >> "$GITHUB_OUTPUT"
+            echo "reason=registry already contains this version" >> "$GITHUB_OUTPUT"
+          else
+            echo "publish=true" >> "$GITHUB_OUTPUT"
+            echo "reason=ready" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Publish to npm
+        if: steps.npm.outputs.publish == 'true'
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: npm publish --provenance --access public
+
+      - name: Create or update GitHub Release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.version.outputs.tag }}
+          TARBALL: ${{ steps.pack.outputs.tarball }}
+        run: |
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" "$TARBALL" --clobber
+          else
+            gh release create "$TAG" "$TARBALL" \
+              --target "$GITHUB_SHA" \
+              --title "dsh-per ${TAG}" \
+              --notes-file CHANGELOG.md
+          fi
+
+      - name: Release summary
+        if: always()
+        shell: bash
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+          NPM_REASON: ${{ steps.npm.outputs.reason }}
+        run: |
+          {
+            echo "### dsh-per release"
+            echo "- version: v${VERSION}"
+            echo "- npm: ${NPM_REASON:-not evaluated}"
+            echo "- GitHub artifact: ${{ steps.pack.outputs.tarball }}"
+          } >> "$GITHUB_STEP_SUMMARY"
