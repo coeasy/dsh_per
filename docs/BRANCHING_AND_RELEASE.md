@@ -18,16 +18,11 @@
 
 ## 2. 禁止用分支名表达正式版本升级
 
-除非用户明确决定改变版本策略，否则不要创建或保留类似：
+除非用户明确决定改变版本策略，否则不要用未来正式版本号命名分支。
 
-- `release/v0.2.0`
-- `release/v0.4.1`
-- `refactor/v1.0.0`
+建议使用主题式名称：
 
-这类容易被理解为正式发布版本的分支。
-
-设计方案、重构批次应使用：
-
+- `release/publish-pipeline`
 - `refactor/runtime-state`
 - `refactor/observability`
 - `docs/config-reference`
@@ -37,13 +32,14 @@
 
 ## 3. 当前分支处理结论
 
-2026-09-06 检查时存在：
+2026-09-06 检查时，除 `main` 外还有两个历史短期分支：
 
-- `main`：当前正式主线；
-- `release/v0.1.0-alignment`：PR #1 已完成并 squash 合并，属于已完成发布分支；
-- `refactor/release-v0.4.1`：早期错误版本口径遗留分支，其中有价值的质量、恢复、可观测性和配置治理规划已经被当前 `docs/PROJECT_OVERVIEW_AND_REFACTOR_PLAN.md` 覆盖，不应继续作为活动开发线。
+- 一个是已经通过 PR #1 squash 合并完成的发布对齐分支；
+- 一个是早期错误版本口径留下的 refactor/release 历史分支。
 
-处理原则：两个历史分支均不再承载独立开发内容，统一收敛到最新 `main`。
+第二个分支中有价值的质量、恢复、可观测性和配置治理规划，已经被当前 `docs/PROJECT_OVERVIEW_AND_REFACTOR_PLAN.md` 覆盖，因此不再保留独立开发意义。
+
+本轮已将两个历史分支全部重新对齐到最新 `main`，不再存在独立代码差异或旧版本开发线。
 
 ## 4. PR 与合并规则
 
