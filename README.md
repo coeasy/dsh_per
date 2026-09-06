@@ -1,145 +1,63 @@
 # dsh-per
 
-> 当前正式版本：**v0.1.0**  
-> npm：`dsh-per@0.1.0`  
-> GitHub Release：`v0.1.0`  
-> 仓库：`coeasy/dsh_per`
+[![npm](https://img.shields.io/npm/v/dsh-per.svg)](https://www.npmjs.com/package/dsh-per)
+[![CI](https://github.com/coeasy/dsh_per/actions/workflows/ci.yml/badge.svg)](https://github.com/coeasy/dsh_per/actions/workflows/ci.yml)
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-DSH 多模型编排插件。把复杂任务组织成“**规划 → 执行 → 复核**”流水线，并在外围提供计划审计、自动修复、机械验证、预算护栏、模型健康/降级、持久化恢复、会话命令与 Settings 配置。
+> 当前正式版本：**v0.1.0** · npm：`dsh-per@0.1.0`
 
-仓库历史上的设计编号只表示设计文档或内部重构轮次，**不是插件发布版本**。插件对外版本统一由根目录 `VERSION` 与 `package.json` 管理，当前固定为 `v0.1.0`。
-
-## 当前发布状态
-
-`v0.1.0` 已完成正式发布：
-
-- npm：`dsh-per@0.1.0`；
-- GitHub Release：`v0.1.0`；
-- GitHub Release 附件：`dsh-per-0.1.0.tgz`；
-- 发布前 TypeScript、build、`ci:checks` 和 151 个测试均通过；
-- 后续重构、CI、文档和质量改进默认继续归档在 `v0.1.0`，不会自行升级版本。
-
-## 主要功能
-
-### 1. Gate 门禁与会话控制
-
-- forced / passthrough / pattern / 短句 / 长文等固定顺序判定。
-- `/per <任务>`：强制当前任务进入编排。
-- `/per on|off|auto`：切换本会话编排模式。
-- `/orch status|set|reset|save|budget|task|passthrough|abort`：管理编排与预算。
-- 坏正则自动跳过并告警，不让错误配置拖垮插件启动。
-
-### 2. Plan → Execute → Review 三阶段流水线
-
-核心链路：
+**dsh-per 是面向 DeepSeek Harness / DSH 的多模型任务编排插件。** 它把复杂任务从“一次模型调用”升级为可规划、可复核、可修复、可验证、可预算控制的执行流水线。
 
 ```text
-用户输入
+用户任务
   → Gate
-  → TaskScheduler
-  → FSM
   → Plan
   → Plan Audit（可选）
   → Execute
   → Review
   → Mechanical Verify
   → Fix / Replan / Done
-  → Accounting
-  → Snapshot / settle
+  → Accounting + Snapshot
 ```
 
-`src/task/transition-table.ts` 是状态迁移的唯一权威；`src/engine.ts` 保持所有 transition 的统一发射出口，子模块通过明确回调参与流程，不能直接绕过 FSM 修改状态。
+如果你希望 DSH 在代码修改、重构、迁移、复杂分析等任务上不仅“给答案”，而是按阶段执行并在交付前做独立复核，dsh-per 就是为这个场景设计的。
 
-### 3. 计划协议与计划审计
+## 为什么使用 dsh-per
 
-- 规划结果使用结构化协议并支持校验失败重试。
-- 可配置 0–2 个计划审计模型。
-- 审计问题使用稳定 issue id，覆盖 feasibility / granularity / risk coverage / file consistency。
-- planner 可声明采纳或反驳，下一轮审计继续核验。
-- 审计服务失败、超时或无结构化结论时 fail-open，主任务不会被增强能力永久阻塞。
+- **规划与执行分离**：先形成结构化计划，再进入执行，避免边想边改导致目标漂移。
+- **独立复核**：reviewer 与 executor 分离，支持缺陷检查、自动修复和重规划。
+- **计划审计**：可配置最多两个审计模型检查可行性、粒度、风险覆盖和文件一致性。
+- **机械验证**：可接入 compile / lint / tests；模型认为“通过”不等于真实通过。
+- **预算护栏**：支持日预算、任务预算、调用数、token 与墙钟熔断。
+- **模型降级**：提供模型健康窗口、熔断、半开和 fallback chain。
+- **安全恢复**：快照记录任务状态；宿主重启时不会盲目重复执行遗留任务。
+- **默认不打扰**：安装后若未配置 stages，插件保持 inert / passthrough。
 
-### 4. 独立复核与自动修复
+## 30 秒安装
 
-- reviewer 使用独立子代理和结构化输出。
-- 大产物可按文件分片并行复核，再按最严缺陷、最低置信度保守合并。
-- fix cycle、重规划、deadlock 都有明确预算和终态。
-- 修复耗尽时按策略 flagged 交付或 abort，避免伪造成功。
+生产环境推荐固定正式版本：
 
-### 5. 机械验证
-
-支持：
-
-- compile
-- lint
-- tests
-
-能力包括：
-
-- 每轮重新执行；
-- 可并行；
-- 超时按 unavailable；
-- 任务取消时终止子进程；
-- reviewer 通过但机械验证失败时仍进入机械修复路径。
-
-### 6. 预算与模型健康
-
-- 每日金额限制、任务金额限制。
-- token / 调用数 / 墙钟熔断。
-- 模型单价表与未知价格告警。
-- 可选择将 passthrough 消耗计入每日限额。
-- 模型健康窗口、熔断、半开与 fallback chain。
-
-### 7. 持久化与生命周期
-
-- 中间态快照合并写入，终态同步落盘。
-- 启动时识别遗留非终态任务并安全标记为 abandoned/aborted，不重复执行旧任务。
-- settle 时统一清理 child sessions、pending steer、request retries、agent 引用等运行态对象。
-- 预算与会话观测记录均有有界清理策略。
-
-### 8. Settings 与 Web 客户端
-
-插件注册 `dsh-per` settings namespace，在 **Settings → Plugins** 提供常用配置：
-
-- 模式；
-- plan / execute / review 模型；
-- 计划审计模型；
-- 预算；
-- 模型单价；
-- 机械验证开关。
-
-高级 gate / limits / circuit breaker / risk / fix-loop / visibility 参数继续由 patch 层管理，避免把所有内部策略暴露进 UI。
-
-## 安装
-
-### npm（推荐）
-
-安装当前正式版本：
-
-```powershell
-dsh plugin --profile <name> add dsh-per@0.1.0
+```bash
+dsh plugin --profile <profile> add dsh-per@0.1.0
 ```
 
-也可以使用 npm 的当前 latest：
+例如：
 
-```powershell
-dsh plugin --profile <name> add dsh-per
+```bash
+dsh plugin --profile web add dsh-per@0.1.0
 ```
 
-### GitHub tag
+也可以安装 npm 当前 latest：
 
-```powershell
-dsh plugin --profile <name> add git+https://github.com/coeasy/dsh_per.git#v0.1.0
+```bash
+dsh plugin --profile <profile> add dsh-per
 ```
 
-### 本地目录
+更多方式：GitHub tag、本地源码、Release tarball、升级、卸载、验证，请看 **[完整安装指南](docs/INSTALLATION.md)**。
 
-```powershell
-dsh plugin --profile <name> add D:\path\to\dsh_per
-```
+## 最小启用配置
 
-## 基础配置
-
-插件通过 `cordis.patch.yml` 插入 `per` 行。默认配置为空，因此没有 stages 时保持 inert / passthrough。
+安装完成后，可在 **Settings → Plugins → dsh-per** 配置常用参数；也可以在 profile patch 中覆盖 `per` 行。
 
 ```yaml
 - id: per
@@ -147,72 +65,79 @@ dsh plugin --profile <name> add D:\path\to\dsh_per
     mode: auto
     stages:
       plan:
-        model: vendor/strong-model
+        model: vendor/planner-model
         reasoning_effort: high
       execute:
-        model: vendor/fast-model
-        reasoning_effort: off
+        model: vendor/executor-model
+        reasoning_effort: low
       review:
         model: vendor/reviewer-model
         reasoning_effort: high
-      plan_audit:
-        - model: vendor/auditor-model
-          reasoning_effort: high
-    mechanical_verification:
-      enabled: true
-      commands:
-        compile:
-          cmd: pnpm run build
-          cwd: .
-        tests:
-          cmd: pnpm test
-          cwd: .
-      timeout_ms: 120000
-    budget:
-      daily_limit_cny: 5
 ```
 
-配置优先级：
+未配置 `stages` 时，插件不会接管普通会话。
+
+## 常用命令
 
 ```text
-会话 /orch set
-  > settings 用户段
-  > saved-overrides.json
-  > 插件 patch config
-  > schema 默认值
+/per <任务>        强制当前任务进入编排
+/per on            本会话全部进入编排
+/per off           本会话全部透传
+/per auto          恢复自动门禁
+/orch status       查看模式、模型、预算和活动任务
+/orch budget       查看今日编排与透传消耗
+/orch task <目标>  强制启动编排任务
+/orch passthrough  下一条消息一次性透传
+/orch abort        终止当前编排任务
 ```
 
-注意：settings 中未声明 reasoning effort 档位的模型，应显式配置 `reasoning_effort: off`，避免 provider 层拒绝未知档位。
+会话级临时切换模型：
+
+```text
+/orch set plan=<model> execute=<model> review=<model>
+/orch reset
+/orch save
+```
+
+完整命令和典型工作流见 **[使用指南](docs/USAGE.md)**。
+
+## 文档导航
+
+| 文档 | 内容 |
+| --- | --- |
+| [文档首页](docs/README.md) | 文档地图与推荐阅读顺序 |
+| [安装指南](docs/INSTALLATION.md) | npm / 固定版本 / GitHub / 本地 / tarball / 更新 / 卸载 |
+| [使用指南](docs/USAGE.md) | 从首次启用到日常命令、典型任务和工作流 |
+| [配置参考](docs/CONFIGURATION.md) | stages、gate、预算、验证、熔断、风险等完整配置 |
+| [故障排查](docs/TROUBLESHOOTING.md) | 安装失败、插件未启用、模型配置、验证失败等 |
+| [项目介绍与宣传稿](docs/PROMOTION.md) | 面向社区、团队和用户的项目介绍 |
+| [架构与重构计划](docs/PROJECT_OVERVIEW_AND_REFACTOR_PLAN.md) | 项目结构、风险与后续改进路线 |
+| [版本策略](docs/VERSIONING.md) | 为什么当前所有正式版本面统一为 v0.1.0 |
+| [分支与发布](docs/BRANCHING_AND_RELEASE.md) | main、短期分支、CI、npm 与 Release 规则 |
+| [E2E 基线](docs/E2E测试报告-v0.1.0.md) | 当前正式版本的端到端验证记录 |
 
 ## 代码结构
 
 ```text
 src/
-├── engine.ts                 # 宿主接线、共享状态、transition 唯一出口
-├── engine/                   # review/audit/accounting/commands/request/... 子模块
-├── task/                     # FSM、registry、transition table
-├── protocols/                # plan / plan-audit / review / mechanical
-├── gate/                     # 输入门禁
-├── router/                   # 模型选择、健康与降级
-├── budget/                   # 预算台账
-├── persistence/              # 快照
-├── settings/                 # Settings namespace / overlay
-├── visibility/               # 里程碑与用户可见信息
-└── config/                   # schema
+├── engine.ts          # 宿主接线、共享状态、transition 统一出口
+├── engine/            # audit/review/accounting/commands/request/... 子模块
+├── task/              # FSM、registry、transition table
+├── protocols/         # plan / plan-audit / review / mechanical
+├── gate/              # 输入门禁
+├── router/            # 模型路由、健康与降级
+├── budget/            # 预算台账
+├── persistence/       # 快照
+├── settings/          # Settings namespace / overlay
+├── visibility/        # 用户可见里程碑
+└── config/            # 配置 schema
 ```
 
-架构原则：
+核心约束：FSM 是任务状态唯一权威；`engine.ts` 持有宿主生命周期与 transition 发射权；外部副作用必须可超时、可取消、可降级；无法验证时使用 flagged / abort，而不是伪造成功。
 
-1. FSM 是任务状态唯一权威。
-2. `engine.ts` 持有宿主生命周期与 transition 发射权。
-3. 配置只有一条解析链：schema → global layers → session override。
-4. 外部副作用必须可超时、可取消、可降级。
-5. 不可验证时 flagged/abort，不能隐式伪造成功。
-6. 发布版本由 `VERSION` 唯一约束，当前固定 `v0.1.0`。
+## 开发与质量门禁
 
-## 开发与门禁
-
-```powershell
+```bash
 pnpm install --no-frozen-lockfile
 pnpm run version:check
 pnpm exec tsc --noEmit -p tsconfig.json
@@ -221,34 +146,16 @@ pnpm run build
 pnpm run ci:checks
 ```
 
-`version:check` 会阻止公共发布面再次出现未经批准的版本漂移。
+当前发布基线已经通过 TypeScript、build、结构门禁和 **151 个测试**。
 
-## 分支策略
+## 版本与发布
 
-- `main` 是唯一长期维护和正式发布分支。
-- fix / refactor / docs / release 分支均为短期分支。
-- 短期分支完成 PR 合并后应删除或重新对齐到最新 `main`，不能继续演变为第二条长期版本线。
-- 分支名不得直接表达未经批准的未来正式版本，建议使用 `release/<topic>`、`refactor/<topic>` 等主题名。
-- 详细规则见 `docs/BRANCHING_AND_RELEASE.md`。
-
-## 已知限制
-
-- 当前 scheduler 仍是单宿主严格串行，同一时间只运行一个编排任务。
-- fallback chain 当前按部署默认 provider 解释，不提供跨 provider 显式绑定语法。
-- 非终态任务在宿主重启后采用安全放弃策略，不做 checkpoint resume。
-- 部分里程碑、提示与审计文案仍为中文硬编码。
-- Settings UI 只覆盖常用配置，高级策略继续使用 patch。
-- 测试环境重复创建 engine 时仍可能触发 `MaxListenersExceededWarning`，需要继续收敛退出监听器生命周期。
-
-## 当前重构计划
-
-项目功能与后续重构计划见：`docs/PROJECT_OVERVIEW_AND_REFACTOR_PLAN.md`。
-
-版本策略见：`docs/VERSIONING.md`。
-
-分支与发布维护规范见：`docs/BRANCHING_AND_RELEASE.md`。
-
-E2E 基线见：`docs/E2E测试报告-v0.1.0.md`。
+- 当前正式版本固定为 **v0.1.0**。
+- npm：`dsh-per@0.1.0`。
+- GitHub Release：`v0.1.0`。
+- `VERSION` 与 `package.json.version` 必须一致。
+- 未经明确决定，不以文档轮次、重构批次、CI 修复为理由自行升级版本。
+- `main` 是唯一长期维护与正式发布分支。
 
 ## License
 
